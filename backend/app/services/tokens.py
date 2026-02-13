@@ -11,14 +11,32 @@ from app.providers.microsoft_oauth import MicrosoftToken, refresh
 from app.repos.connections import upsert_connection
 
 
+class TokenError(RuntimeError):
+    pass
+
+
+class TokenDecryptError(TokenError):
+    pass
+
+
+class TokenExpiredError(TokenError):
+    pass
+
+
 def get_github_access_token(conn: ProviderConnection) -> str:
-    return decrypt_str(conn.encrypted_access_token)
+    try:
+        return decrypt_str(conn.encrypted_access_token)
+    except ValueError as e:
+        raise TokenDecryptError("GitHub token cannot be decrypted; reconnect required") from e
 
 
 def get_microsoft_access_token(db: Session, conn: ProviderConnection) -> str:
     settings = get_settings()
 
-    token = decrypt_str(conn.encrypted_access_token)
+    try:
+        token = decrypt_str(conn.encrypted_access_token)
+    except ValueError as e:
+        raise TokenDecryptError("Microsoft token cannot be decrypted; reconnect required") from e
     if conn.expires_at is None:
         return token
 
@@ -27,15 +45,23 @@ def get_microsoft_access_token(db: Session, conn: ProviderConnection) -> str:
         return token
 
     if not conn.encrypted_refresh_token:
-        return token
+        raise TokenExpiredError("Microsoft token expired and no refresh token is available; reconnect required")
 
-    refreshed: MicrosoftToken = refresh(
-        tenant=settings.ms_tenant,
-        client_id=settings.ms_client_id,
-        client_secret=settings.ms_client_secret,
-        refresh_token=decrypt_str(conn.encrypted_refresh_token),
-        scope=_ms_scopes(),
-    )
+    try:
+        refresh_token = decrypt_str(conn.encrypted_refresh_token)
+    except ValueError as e:
+        raise TokenDecryptError("Microsoft refresh token cannot be decrypted; reconnect required") from e
+
+    try:
+        refreshed: MicrosoftToken = refresh(
+            tenant=settings.ms_tenant,
+            client_id=settings.ms_client_id,
+            client_secret=settings.ms_client_secret,
+            refresh_token=refresh_token,
+            scope=_ms_scopes(),
+        )
+    except Exception as e:
+        raise TokenExpiredError("Microsoft token refresh failed; reconnect required") from e
 
     upsert_connection(
         db,
@@ -54,4 +80,3 @@ def get_microsoft_access_token(db: Session, conn: ProviderConnection) -> str:
 def _ms_scopes() -> str:
     # Keep in one place for consistency across authorize/token calls.
     return "openid profile email offline_access Organization.Read.All Policy.Read.All"
-

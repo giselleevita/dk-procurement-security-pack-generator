@@ -10,7 +10,22 @@ from app.providers.graph_api import GraphApi, GraphApiError
 from app.repos.connections import get_connection
 from app.repos.evidence import add_control_evidence, create_run, finish_run
 from app.services.control_defs import CONTROLS
-from app.services.tokens import get_github_access_token, get_microsoft_access_token
+from app.services.tokens import TokenDecryptError, TokenExpiredError, get_github_access_token, get_microsoft_access_token
+
+
+GITHUB_CONTROL_KEYS = (
+    "gh.branch_protection",
+    "gh.pr_reviews_required",
+    "gh.force_pushes_disabled",
+    "gh.enforce_admins",
+    "gh.repo_visibility_review",
+)
+
+MICROSOFT_CONTROL_KEYS = (
+    "ms.security_defaults",
+    "ms.conditional_access_presence",
+    "ms.admin_surface_area",
+)
 
 
 def collect_now(db: Session, *, user_id) -> dict:
@@ -18,16 +33,34 @@ def collect_now(db: Session, *, user_id) -> dict:
 
     errors: list[str] = []
 
-    # Provider controls (store unknown when not connected to keep dashboard stable).
+    # Always write a complete 12-control snapshot per run (no mixing across runs).
     try:
         _collect_github(db, user_id=user_id, run_id=run.id)
     except Exception as e:
         errors.append(f"github: {type(e).__name__}")
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run.id,
+            keys=GITHUB_CONTROL_KEYS,
+            provider="github",
+            artifacts={"error": "github_collection_failed", "error_type": type(e).__name__},
+            notes="GitHub evidence collection failed; reconnect or check permissions.",
+        )
 
     try:
         _collect_microsoft(db, user_id=user_id, run_id=run.id)
     except Exception as e:
         errors.append(f"microsoft: {type(e).__name__}")
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run.id,
+            keys=MICROSOFT_CONTROL_KEYS,
+            provider="microsoft",
+            artifacts={"error": "microsoft_collection_failed", "error_type": type(e).__name__},
+            notes="Microsoft evidence collection failed; reconnect or check permissions/admin consent.",
+        )
 
     # Pack hygiene controls computed from what we just stored.
     _collect_pack_hygiene(db, user_id=user_id, run_id=run.id)
@@ -43,35 +76,55 @@ def collect_now(db: Session, *, user_id) -> dict:
 def _collect_github(db: Session, *, user_id, run_id) -> None:
     conn = get_connection(db, user_id=user_id, provider="github")
     if conn is None:
-        for key in ("gh.branch_protection", "gh.pr_reviews_required", "gh.force_pushes_disabled", "gh.enforce_admins", "gh.repo_visibility_review"):
-            add_control_evidence(
-                db,
-                user_id=user_id,
-                run_id=run_id,
-                control_key=key,
-                provider="github",
-                status="unknown",
-                artifacts={"error": "github_not_connected"},
-                notes="GitHub is not connected.",
-            )
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            keys=GITHUB_CONTROL_KEYS,
+            provider="github",
+            artifacts={"error": "github_not_connected"},
+            notes="GitHub is not connected.",
+        )
         return
 
-    token = get_github_access_token(conn)
+    try:
+        token = get_github_access_token(conn)
+    except TokenDecryptError as e:
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            keys=GITHUB_CONTROL_KEYS,
+            provider="github",
+            artifacts={"error": "github_token_decrypt_failed"},
+            notes=str(e),
+        )
+        return
     api = GitHubApi(access_token=token)
 
-    repos = api.list_repos(per_page=100)[:10]
+    try:
+        repos = api.list_repos(per_page=100)[:10]
+    except Exception as e:
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            keys=GITHUB_CONTROL_KEYS,
+            provider="github",
+            artifacts={"error": "github_repo_list_failed", "error_type": type(e).__name__},
+            notes="Unable to list repositories with the current GitHub token/scopes; reconnect or adjust permissions.",
+        )
+        return
     if not repos:
-        for key in ("gh.branch_protection", "gh.pr_reviews_required", "gh.force_pushes_disabled", "gh.enforce_admins", "gh.repo_visibility_review"):
-            add_control_evidence(
-                db,
-                user_id=user_id,
-                run_id=run_id,
-                control_key=key,
-                provider="github",
-                status="unknown",
-                artifacts={"repos_sampled": 0},
-                notes="No repositories found for the connected GitHub account.",
-            )
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            keys=GITHUB_CONTROL_KEYS,
+            provider="github",
+            artifacts={"repos_sampled": 0},
+            notes="No repositories found for the connected GitHub account.",
+        )
         return
 
     repo_rows: list[dict] = []
@@ -191,20 +244,30 @@ def _collect_github(db: Session, *, user_id, run_id) -> None:
 def _collect_microsoft(db: Session, *, user_id, run_id) -> None:
     conn = get_connection(db, user_id=user_id, provider="microsoft")
     if conn is None:
-        for key in ("ms.security_defaults", "ms.conditional_access_presence", "ms.admin_surface_area"):
-            add_control_evidence(
-                db,
-                user_id=user_id,
-                run_id=run_id,
-                control_key=key,
-                provider="microsoft",
-                status="unknown",
-                artifacts={"error": "microsoft_not_connected"},
-                notes="Microsoft is not connected.",
-            )
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            keys=MICROSOFT_CONTROL_KEYS,
+            provider="microsoft",
+            artifacts={"error": "microsoft_not_connected"},
+            notes="Microsoft is not connected.",
+        )
         return
 
-    token = get_microsoft_access_token(db, conn)
+    try:
+        token = get_microsoft_access_token(db, conn)
+    except (TokenDecryptError, TokenExpiredError) as e:
+        _write_unknown_controls(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            keys=MICROSOFT_CONTROL_KEYS,
+            provider="microsoft",
+            artifacts={"error": "microsoft_token_invalid"},
+            notes=str(e),
+        )
+        return
     api = GraphApi(access_token=token)
 
     artifacts: dict = {}
@@ -373,6 +436,29 @@ def _latest_run_rows(db: Session, *, user_id, run_id):
 
     stmt = select(ControlEvidence).where(ControlEvidence.user_id == user_id, ControlEvidence.run_id == run_id)
     return list(db.execute(stmt).scalars().all())
+
+
+def _write_unknown_controls(
+    db: Session,
+    *,
+    user_id,
+    run_id,
+    keys: tuple[str, ...],
+    provider: str,
+    artifacts: dict,
+    notes: str,
+) -> None:
+    for key in keys:
+        add_control_evidence(
+            db,
+            user_id=user_id,
+            run_id=run_id,
+            control_key=key,
+            provider=provider,
+            status="unknown",
+            artifacts=artifacts,
+            notes=notes,
+        )
 
 
 def _aggregate_status(total: int, good: int, *, bad_count: int) -> str:
