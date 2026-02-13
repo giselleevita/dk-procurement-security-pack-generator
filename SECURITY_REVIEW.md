@@ -165,3 +165,8 @@ After fixes, this document must be updated to list:
 - mitigations implemented
 - exact wipe semantics
 - exact OAuth error behavior
+
+## Dependency Changes (Hardening Pass)
+The hardening pass kept dependency changes minimal.
+- Backend: `psycopg[binary]` was bumped to `3.2.13` because `3.2.3` was not available for install in the environment we validated (keeps installs reproducible).
+- Frontend: `react-router-dom` is used for simple SPA routing between Login/Register/Dashboard/Connections/Control pages (no token storage added; cookie-based auth remains).

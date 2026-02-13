@@ -167,7 +167,7 @@ inner_bytes = outer.read("evidence-pack.zip")
 open("evidence-pack.zip","wb").write(inner_bytes)
 inner = zipfile.ZipFile("evidence-pack.zip")
 blob = inner.read("manifest.json") + b"".join(inner.read(f["filename"]) for f in __import__("json").loads(inner.read("manifest.json"))["files"])
-patterns = [rb"access_token", rb"refresh_token", rb"client_secret", rb"Bearer\\s+[A-Za-z0-9_\\-]+"]
+patterns = [rb"access_token", rb"refresh_token", rb"client_secret", rb"Bearer\\s+[A-Za-z0-9_\\-]+", rb"code="]
 hits = []
 for p in patterns:
   if re.search(p, blob, flags=re.IGNORECASE):
