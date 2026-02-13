@@ -19,6 +19,7 @@ Open:
 - Self-hosted and local-only: runs in your environment via Docker Compose.
 - No SaaS, no telemetry, no external analytics.
 - OAuth tokens are stored **encrypted at rest** in Postgres using Fernet (`FERNET_KEY`).
+- If `FERNET_KEY` is rotated/changed, existing tokens can no longer be decrypted; users must **reconnect providers**.
 - Evidence is collected only when you click **Collect now**.
 - Export packs contain reports and evidence artifacts only:
   - **No OAuth tokens**
