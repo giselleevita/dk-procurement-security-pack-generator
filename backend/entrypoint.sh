@@ -8,5 +8,8 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   alembic -c alembic.ini upgrade head
 fi
 
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
+if [ "${APP_ENV:-dev}" = "dev" ]; then
+  exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+else
+  exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+fi
