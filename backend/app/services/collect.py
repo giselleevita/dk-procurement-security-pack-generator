@@ -46,6 +46,7 @@ def collect_now(db: Session, *, user_id) -> dict:
             provider="github",
             artifacts={"error": "github_collection_failed", "error_type": type(e).__name__},
             notes="GitHub evidence collection failed; reconnect or check permissions.",
+            only_missing=True,
         )
 
     try:
@@ -60,6 +61,7 @@ def collect_now(db: Session, *, user_id) -> dict:
             provider="microsoft",
             artifacts={"error": "microsoft_collection_failed", "error_type": type(e).__name__},
             notes="Microsoft evidence collection failed; reconnect or check permissions/admin consent.",
+            only_missing=True,
         )
 
     # Pack hygiene controls computed from what we just stored.
@@ -447,7 +449,11 @@ def _write_unknown_controls(
     provider: str,
     artifacts: dict,
     notes: str,
+    only_missing: bool = False,
 ) -> None:
+    if only_missing:
+        present = {r.control_key for r in _latest_run_rows(db, user_id=user_id, run_id=run_id)}
+        keys = tuple(k for k in keys if k not in present)
     for key in keys:
         add_control_evidence(
             db,
