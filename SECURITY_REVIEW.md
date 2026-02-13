@@ -112,12 +112,19 @@ This is validated by the export verification step in `VALIDATION_PLAN.md` (searc
    - Mitigation: do not log tokens or auth codes; avoid echoing provider responses containing secrets (current code does not log tokens).
 2. **CSRF on mutating endpoints**
    - Mitigation: CSRF token required via `X-CSRF-Token` header; session-bound token check in backend (`backend/app/api/deps.py`) and consistent client behavior (`frontend/src/api/client.ts`).
+   - Additional: mutating requests with an `Origin` header must match an allowed origin list (`ALLOWED_ORIGINS`) to reduce CSRF surface.
 3. **IDOR / cross-user data access**
    - Mitigation: all DB queries are scoped by `user_id` in repository functions; endpoints use authenticated user context.
 4. **XSS leading to cookie/session abuse**
    - Mitigation: UI renders artifacts as plain text (`<pre>` + `JSON.stringify`), no `dangerouslySetInnerHTML`.
 5. **Export integrity issues**
    - Mitigation: evidence ZIP includes manifest with SHA-256; export validates hashes at generation time (`backend/app/services/export_pack.py`).
+6. **OAuth denial/error UX safety**
+   - Mitigation: OAuth callbacks handle denial/error and redirect with user-readable messages (no 422 error pages) (`backend/app/api/routes/oauth.py`, `frontend/src/pages/Connections.tsx`).
+7. **Token decryption/rotation safe failure**
+   - Mitigation: if Fernet key changes or encrypted tokens can’t be decrypted, collection fails safe and reports “reconnect required” rather than crashing (`backend/app/services/tokens.py`, `backend/app/services/collect.py`).
+8. **Host header validation**
+   - Mitigation: TrustedHostMiddleware with configurable `ALLOWED_HOSTS` reduces Host header abuse in non-local deployments (`backend/app/main.py`).
 
 ### Safe failure modes (required for procurement trust)
 - If Graph permissions are missing, controls become `unknown` instead of crashing (collector handles 401/403).
@@ -127,21 +134,21 @@ This is validated by the export verification step in `VALIDATION_PLAN.md` (searc
 This section is the procurement-grade checklist of common failure modes and the current status (must be “confirmed” before release).
 
 1. OAuth denial/error yields raw 422 or stack trace
-   - Status: requires validation and (if failing) fix
+   - Status: mitigated; test exists (`backend/tests/test_integration_smoke.py`)
 2. OAuth state replay or cross-session state usage
-   - Status: state stored server-side, one-time; needs denial/replay validation
+   - Status: state stored server-side, one-time; callback consumes state and redirects safely
 3. Tokens end up in logs/exceptions
-   - Status: no token logging in code; needs export/log scan validation
+   - Status: no token logging in code; export scan step required (`VALIDATION_PLAN.md`)
 4. Fernet key rotation causes undefined behavior
-   - Status: must fail safe (“reconnect required”) and be documented
+   - Status: fails safe with “reconnect required” notes; document + validate
 5. CSRF is placebo (cookie auth with no real CSRF)
-   - Status: CSRF header+cookie+session binding exists; origin checks must be consistent
+   - Status: CSRF header+cookie+session binding + allowed-origin checks on mutating endpoints
 6. Forget provider does not actually remove sensitive data
-   - Status: must be deterministic (tokens removed + evidence handled)
+   - Status: connection deleted and provider evidence cleared; test exists (`backend/tests/test_integration_smoke.py`)
 7. Wipe all data leaves residual user data (sessions, oauth state, evidence, connections)
-   - Status: must be validated and completed
+   - Status: evidence + connections + oauth states + sessions deleted; wipe clears cookies; test exists (`backend/tests/test_integration_smoke.py`)
 8. Evidence snapshots mix across runs (inconsistent dashboard/export)
-   - Status: must be fixed by ensuring each run writes a complete snapshot
+   - Status: collector writes a complete snapshot even on provider errors; test exists (`backend/tests/test_integration_smoke.py`)
 9. Exports include secrets or personally sensitive values unexpectedly
    - Status: explicit “no secrets in export” validation required
 10. Export manifest hashes don’t verify / integrity claim untrue
@@ -152,4 +159,3 @@ After fixes, this document must be updated to list:
 - mitigations implemented
 - exact wipe semantics
 - exact OAuth error behavior
-
