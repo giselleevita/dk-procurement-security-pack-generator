@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
 from app.core.security import token_hash
-from app.core.settings import get_settings
+from app.core.settings import get_settings, parse_allowed_origins
 from app.db.session import get_db
 from app.models.session import Session as DbSession
 from app.models.user import User
@@ -53,5 +53,5 @@ def require_csrf(request: Request, auth: AuthContext = Depends(get_auth_ctx)) ->
     # Bind requests to the configured web origin when present.
     settings = get_settings()
     origin = request.headers.get("origin")
-    if origin is not None and origin != settings.web_base_url:
+    if origin is not None and origin not in set(parse_allowed_origins(settings)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin check failed")

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     app_base_url: str = "http://localhost:8000"
     web_base_url: str = "http://localhost:5173"
+    allowed_origins: str = ""
 
     cookie_secure: bool = False
 
@@ -31,3 +32,9 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
 
+
+def parse_allowed_origins(settings: Settings) -> list[str]:
+    if settings.allowed_origins.strip():
+        return [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+    # Default to common local dev origins.
+    return list({settings.web_base_url, "http://localhost:5173", "http://127.0.0.1:5173"})

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import router as api_router
-from app.core.settings import get_settings
+from app.core.settings import get_settings, parse_allowed_origins
 
 
 def create_app() -> FastAPI:
@@ -20,7 +20,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.web_base_url],
+        allow_origins=parse_allowed_origins(settings),
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
