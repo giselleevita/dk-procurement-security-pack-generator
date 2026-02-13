@@ -44,14 +44,13 @@ python3 -m compileall -q backend/app backend/tests backend/alembic
 ```
 Expected: exit code 0.
 
-### Backend tests
+### Backend tests (recommended: run inside the API container)
 ```sh
-cd backend
-DATABASE_URL="sqlite+pysqlite:///:memory:" \
-FERNET_KEY="$(python3 -c 'import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" \
-pytest
+docker compose exec api pytest
 ```
 Expected: all tests pass.
+
+Note: running backend tests on the host requires a supported Python version for dependencies (MVP targets Python 3.12 in Docker).
 
 ### Frontend lint/build (optional but recommended)
 ```sh
