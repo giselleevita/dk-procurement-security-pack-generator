@@ -95,6 +95,7 @@ Expected:
 - UI shows user-readable error (no 422 validation error page; no stack trace)
 - No token saved; connection stays Not connected
 - OAuth state is one-time (re-using callback URL does not connect)
+- Server logs do not contain OAuth `code` query parameters (access logs disabled).
 
 ### Microsoft: success path
 1. UI: `Connect Microsoft` → authorize
@@ -107,6 +108,7 @@ Expected:
 - UI shows user-readable error
 - Controls dependent on missing scopes become `unknown` during collect (not a crash)
 - No stack traces exposed
+- Server logs do not contain OAuth `code` query parameters (access logs disabled).
 
 ### Reconnect behavior (both providers)
 1. UI: Forget provider → Connect again
@@ -193,4 +195,3 @@ Expected:
 - Connections cleared
 - Evidence cleared (dashboard shows `unknown` / “No evidence”)
 - Session is revoked/logged out (or equivalent explicit behavior)
-
