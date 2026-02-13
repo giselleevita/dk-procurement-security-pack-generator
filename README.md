@@ -36,6 +36,7 @@ Edit `.env` and set:
 - `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT`, `MS_OAUTH_REDIRECT_URI`
 - Optional: `ALLOWED_ORIGINS` (comma-separated) for CORS/CSRF origin checks
 - Optional: `ALLOWED_HOSTS` (comma-separated) for Host header validation (TrustedHostMiddleware)
+- Production hardening: set `COOKIE_SECURE=true` when running behind HTTPS/TLS
 
 ### OAuth Redirect URIs
 GitHub OAuth App:
