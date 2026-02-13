@@ -1,0 +1,165 @@
+from __future__ import annotations
+
+import secrets
+from datetime import datetime, timedelta
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.deps import AuthContext, get_auth_ctx, require_csrf
+from app.core.settings import get_settings
+from app.crypto.fernet import encrypt_str
+from app.db.session import get_db
+from app.providers.github_oauth import exchange_code as gh_exchange
+from app.providers.github_api import GitHubApi
+from app.providers.microsoft_oauth import exchange_code as ms_exchange
+from app.providers.graph_api import GraphApi
+from app.repos.connections import upsert_connection
+from app.repos.oauth_states import consume_state, create_state, delete_expired_states
+from app.services.tokens import _ms_scopes
+
+router = APIRouter(prefix="/oauth", tags=["oauth"])
+
+
+class StartResponse(BaseModel):
+    authorize_url: str
+
+
+@router.post("/github/start", response_model=StartResponse)
+def github_start(
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_ctx),
+    _: None = Depends(require_csrf),
+) -> StartResponse:
+    settings = get_settings()
+    if not settings.github_client_id or not settings.github_client_secret or not settings.github_oauth_redirect_uri:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="GitHub OAuth is not configured")
+
+    delete_expired_states(db)
+    state = secrets.token_urlsafe(24)
+    create_state(db, user_id=auth.user.id, provider="github", state=state, expires_at=datetime.utcnow() + timedelta(minutes=10))
+
+    scope = "repo read:org read:user"
+    q = urlencode(
+        {
+            "client_id": settings.github_client_id,
+            "redirect_uri": settings.github_oauth_redirect_uri,
+            "scope": scope,
+            "state": state,
+            "allow_signup": "false",
+        }
+    )
+    return StartResponse(authorize_url=f"https://github.com/login/oauth/authorize?{q}")
+
+
+@router.get("/github/callback")
+def github_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_ctx),
+):
+    settings = get_settings()
+    st = consume_state(db, user_id=auth.user.id, provider="github", state=state)
+    if st is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OAuth state")
+
+    tok = gh_exchange(
+        client_id=settings.github_client_id,
+        client_secret=settings.github_client_secret,
+        code=code,
+        redirect_uri=settings.github_oauth_redirect_uri,
+    )
+
+    gh = GitHubApi(access_token=tok.access_token)
+    viewer = gh.get_viewer()
+    provider_account_id = str(viewer.get("id")) if isinstance(viewer, dict) else None
+
+    upsert_connection(
+        db,
+        user_id=auth.user.id,
+        provider="github",
+        encrypted_access_token=encrypt_str(tok.access_token),
+        encrypted_refresh_token=None,
+        scopes=tok.scope,
+        token_type=tok.token_type,
+        expires_at=None,
+        provider_account_id=provider_account_id,
+    )
+
+    # Redirect back to web UI.
+    return RedirectResponse(url=f"{settings.web_base_url}/connections?provider=github&status=connected")
+
+
+@router.post("/microsoft/start", response_model=StartResponse)
+def microsoft_start(
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_ctx),
+    _: None = Depends(require_csrf),
+) -> StartResponse:
+    settings = get_settings()
+    if not settings.ms_client_id or not settings.ms_client_secret or not settings.ms_oauth_redirect_uri:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Microsoft OAuth is not configured")
+
+    delete_expired_states(db)
+    state = secrets.token_urlsafe(24)
+    create_state(db, user_id=auth.user.id, provider="microsoft", state=state, expires_at=datetime.utcnow() + timedelta(minutes=10))
+
+    q = urlencode(
+        {
+            "client_id": settings.ms_client_id,
+            "response_type": "code",
+            "redirect_uri": settings.ms_oauth_redirect_uri,
+            "response_mode": "query",
+            "scope": _ms_scopes(),
+            "state": state,
+            "prompt": "select_account",
+        }
+    )
+    return StartResponse(authorize_url=f"https://login.microsoftonline.com/{settings.ms_tenant}/oauth2/v2.0/authorize?{q}")
+
+
+@router.get("/microsoft/callback")
+def microsoft_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_ctx),
+):
+    settings = get_settings()
+    st = consume_state(db, user_id=auth.user.id, provider="microsoft", state=state)
+    if st is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OAuth state")
+
+    tok = ms_exchange(
+        tenant=settings.ms_tenant,
+        client_id=settings.ms_client_id,
+        client_secret=settings.ms_client_secret,
+        code=code,
+        redirect_uri=settings.ms_oauth_redirect_uri,
+        scope=_ms_scopes(),
+    )
+
+    graph = GraphApi(access_token=tok.access_token)
+    try:
+        org = graph.get_org()
+        provider_account_id = org.tenant_id
+    except Exception:
+        provider_account_id = None
+
+    upsert_connection(
+        db,
+        user_id=auth.user.id,
+        provider="microsoft",
+        encrypted_access_token=encrypt_str(tok.access_token),
+        encrypted_refresh_token=encrypt_str(tok.refresh_token) if tok.refresh_token else None,
+        scopes=tok.scope,
+        token_type=tok.token_type,
+        expires_at=tok.expires_at,
+        provider_account_id=provider_account_id,
+    )
+
+    return RedirectResponse(url=f"{settings.web_base_url}/connections?provider=microsoft&status=connected")
