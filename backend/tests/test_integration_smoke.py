@@ -178,3 +178,120 @@ def test_collect_writes_complete_snapshot_even_on_provider_error(monkeypatch):
     # GitHub controls should exist in this run even though provider call failed.
     detail = client.get("/api/controls/gh.branch_protection").json()
     assert detail["status"] == "unknown"
+
+
+def test_forget_provider_deletes_tokens_and_provider_evidence(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+
+    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+    r = client.post("/api/auth/register", json={"email": "d@example.com", "password": "password123"})
+    assert r.status_code == 200
+    csrf = client.cookies.get("dkpack_csrf")
+    assert csrf
+
+    import uuid
+    from app.crypto.fernet import encrypt_str
+    from app.repos.connections import upsert_connection
+    from app.repos.evidence import add_control_evidence, create_run
+
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        upsert_connection(
+            db,
+            user_id=user_id,
+            provider="github",
+            encrypted_access_token=encrypt_str("fake"),
+            encrypted_refresh_token=None,
+            scopes="",
+            token_type="Bearer",
+            expires_at=None,
+            provider_account_id=None,
+        )
+        run = create_run(db, user_id=user_id)
+        add_control_evidence(
+            db,
+            user_id=user_id,
+            run_id=run.id,
+            control_key="gh.branch_protection",
+            provider="github",
+            status="pass",
+            artifacts={"x": 1},
+            notes="n",
+        )
+    finally:
+        db.close()
+
+    resp = client.delete("/api/connections/github", headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 200
+
+    # Evidence should be cleared for that provider.
+    detail = client.get("/api/controls/gh.branch_protection").json()
+    assert detail["status"] == "unknown"
+
+
+def test_wipe_deletes_all_user_data_and_logs_out(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+
+    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+    r = client.post("/api/auth/register", json={"email": "e@example.com", "password": "password123"})
+    assert r.status_code == 200
+    csrf = client.cookies.get("dkpack_csrf")
+    assert csrf
+
+    w = client.post("/api/wipe", headers={"X-CSRF-Token": csrf})
+    assert w.status_code == 200
+
+    # Session should no longer be valid.
+    me = client.get("/api/me")
+    assert me.status_code == 401

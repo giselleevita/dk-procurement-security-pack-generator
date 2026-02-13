@@ -63,7 +63,8 @@ export function ConnectionsPage() {
     setErr(null);
     try {
       await api.post("/api/wipe");
-      await load();
+      // Wipe revokes sessions and clears cookies; go back to login deterministically.
+      window.location.href = "/login";
     } catch (e) {
       setErr(e instanceof ApiError ? JSON.stringify(e.detail) : "Wipe failed");
     } finally {

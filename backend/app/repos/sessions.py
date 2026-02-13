@@ -46,3 +46,9 @@ def revoke_session(db: Session, session_id: uuid.UUID) -> None:
     db.execute(stmt)
     db.commit()
 
+
+def delete_all_sessions_for_user(db: Session, *, user_id: uuid.UUID) -> None:
+    from sqlalchemy import delete
+
+    db.execute(delete(DbSession).where(DbSession.user_id == user_id))
+    db.commit()

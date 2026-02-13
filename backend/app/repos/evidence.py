@@ -89,3 +89,8 @@ def delete_all_user_data(db: Session, *, user_id: uuid.UUID) -> None:
     db.execute(delete(ControlEvidence).where(ControlEvidence.user_id == user_id))
     db.execute(delete(EvidenceRun).where(EvidenceRun.user_id == user_id))
     db.commit()
+
+
+def delete_user_evidence_for_provider(db: Session, *, user_id: uuid.UUID, provider: str) -> None:
+    db.execute(delete(ControlEvidence).where(ControlEvidence.user_id == user_id, ControlEvidence.provider == provider))
+    db.commit()
