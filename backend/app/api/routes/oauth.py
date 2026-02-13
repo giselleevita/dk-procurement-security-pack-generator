@@ -28,6 +28,18 @@ class StartResponse(BaseModel):
     authorize_url: str
 
 
+def _clean_err(msg: str, *, limit: int = 220) -> str:
+    msg = (msg or "").replace("\n", " ").replace("\r", " ").strip()
+    return msg[:limit]
+
+
+def _redirect(settings, *, provider: str, status_value: str, error: str | None = None) -> RedirectResponse:
+    q: dict[str, str] = {"provider": provider, "status": status_value}
+    if error:
+        q["error"] = _clean_err(error)
+    return RedirectResponse(url=f"{settings.web_base_url}/connections?{urlencode(q)}")
+
+
 @router.post("/github/start", response_model=StartResponse)
 def github_start(
     db: Session = Depends(get_db),
@@ -57,26 +69,45 @@ def github_start(
 
 @router.get("/github/callback")
 def github_callback(
-    code: str,
-    state: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(get_auth_ctx),
 ):
     settings = get_settings()
+    if not state:
+        return _redirect(settings, provider="github", status_value="error", error="Missing OAuth state")
+
     st = consume_state(db, user_id=auth.user.id, provider="github", state=state)
     if st is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OAuth state")
+        return _redirect(settings, provider="github", status_value="error", error="Invalid or expired OAuth state")
 
-    tok = gh_exchange(
-        client_id=settings.github_client_id,
-        client_secret=settings.github_client_secret,
-        code=code,
-        redirect_uri=settings.github_oauth_redirect_uri,
-    )
+    if error:
+        msg = error_description or error
+        return _redirect(settings, provider="github", status_value="error", error=f"GitHub authorization failed: {msg}")
 
-    gh = GitHubApi(access_token=tok.access_token)
-    viewer = gh.get_viewer()
-    provider_account_id = str(viewer.get("id")) if isinstance(viewer, dict) else None
+    if not code:
+        return _redirect(settings, provider="github", status_value="error", error="Missing GitHub authorization code")
+
+    try:
+        tok = gh_exchange(
+            client_id=settings.github_client_id,
+            client_secret=settings.github_client_secret,
+            code=code,
+            redirect_uri=settings.github_oauth_redirect_uri,
+        )
+    except Exception:
+        return _redirect(settings, provider="github", status_value="error", error="GitHub token exchange failed")
+
+    provider_account_id = None
+    try:
+        gh = GitHubApi(access_token=tok.access_token)
+        viewer = gh.get_viewer()
+        provider_account_id = str(viewer.get("id")) if isinstance(viewer, dict) else None
+    except Exception:
+        provider_account_id = None
 
     upsert_connection(
         db,
@@ -90,8 +121,7 @@ def github_callback(
         provider_account_id=provider_account_id,
     )
 
-    # Redirect back to web UI.
-    return RedirectResponse(url=f"{settings.web_base_url}/connections?provider=github&status=connected")
+    return _redirect(settings, provider="github", status_value="connected")
 
 
 @router.post("/microsoft/start", response_model=StartResponse)
@@ -124,24 +154,39 @@ def microsoft_start(
 
 @router.get("/microsoft/callback")
 def microsoft_callback(
-    code: str,
-    state: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(get_auth_ctx),
 ):
     settings = get_settings()
+    if not state:
+        return _redirect(settings, provider="microsoft", status_value="error", error="Missing OAuth state")
+
     st = consume_state(db, user_id=auth.user.id, provider="microsoft", state=state)
     if st is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OAuth state")
+        return _redirect(settings, provider="microsoft", status_value="error", error="Invalid or expired OAuth state")
 
-    tok = ms_exchange(
-        tenant=settings.ms_tenant,
-        client_id=settings.ms_client_id,
-        client_secret=settings.ms_client_secret,
-        code=code,
-        redirect_uri=settings.ms_oauth_redirect_uri,
-        scope=_ms_scopes(),
-    )
+    if error:
+        msg = error_description or error
+        return _redirect(settings, provider="microsoft", status_value="error", error=f"Microsoft authorization failed: {msg}")
+
+    if not code:
+        return _redirect(settings, provider="microsoft", status_value="error", error="Missing Microsoft authorization code")
+
+    try:
+        tok = ms_exchange(
+            tenant=settings.ms_tenant,
+            client_id=settings.ms_client_id,
+            client_secret=settings.ms_client_secret,
+            code=code,
+            redirect_uri=settings.ms_oauth_redirect_uri,
+            scope=_ms_scopes(),
+        )
+    except Exception:
+        return _redirect(settings, provider="microsoft", status_value="error", error="Microsoft token exchange failed")
 
     graph = GraphApi(access_token=tok.access_token)
     try:
@@ -162,4 +207,4 @@ def microsoft_callback(
         provider_account_id=provider_account_id,
     )
 
-    return RedirectResponse(url=f"{settings.web_base_url}/connections?provider=microsoft&status=connected")
+    return _redirect(settings, provider="microsoft", status_value="connected")

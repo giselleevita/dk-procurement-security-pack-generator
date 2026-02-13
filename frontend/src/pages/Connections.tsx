@@ -5,6 +5,7 @@ import type { Connection } from "../api/types";
 export function ConnectionsPage() {
   const [rows, setRows] = useState<Connection[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
@@ -18,6 +19,15 @@ export function ConnectionsPage() {
   }
 
   useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const provider = q.get("provider");
+    const status = q.get("status");
+    const msg = q.get("error");
+    if (status === "connected" && provider) {
+      setNotice(`${provider} connected.`);
+    } else if (status === "error" && provider) {
+      setNotice(`${provider} connection failed: ${msg || "Unknown error"}`);
+    }
     load();
   }, []);
 
@@ -73,6 +83,7 @@ export function ConnectionsPage() {
         </p>
       </section>
 
+      {notice ? <div className="card">{notice}</div> : null}
       {err ? <div className="error">{err}</div> : null}
 
       <section className="card">
@@ -125,4 +136,3 @@ export function ConnectionsPage() {
     </div>
   );
 }
-
