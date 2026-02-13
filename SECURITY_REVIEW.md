@@ -73,6 +73,12 @@ Action: “Wipe all data”
 - Deletes provider connections and OAuth states for the current user
 - Session handling on wipe is explicitly defined (see validation plan)
 
+### Full database purge (admin / local operator)
+If you want to remove **all** stored data (including all local users), delete the Postgres volume:
+```sh
+docker compose down -v
+```
+
 ## Exports: What’s Included and What Is Not
 ### Export pack contents
 `dk-security-pack.zip` contains:
