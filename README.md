@@ -34,6 +34,7 @@ Edit `.env` and set:
 - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_OAUTH_REDIRECT_URI`
 - `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT`, `MS_OAUTH_REDIRECT_URI`
 - Optional: `ALLOWED_ORIGINS` (comma-separated) for CORS/CSRF origin checks
+- Optional: `ALLOWED_HOSTS` (comma-separated) for Host header validation (TrustedHostMiddleware)
 
 ### OAuth Redirect URIs
 GitHub OAuth App:
