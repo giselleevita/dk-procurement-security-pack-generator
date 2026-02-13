@@ -32,6 +32,27 @@ def render_report_pdf(*, generated_at: datetime, evidence_by_key: dict[str, dict
     story.append(Paragraph(f"Generated (UTC): {generated_at.isoformat()}Z", p))
     story.append(Spacer(1, 8))
 
+    story.append(Paragraph("Databehandling (DK)", h))
+    story.append(
+        Paragraph(
+            "Lokal generering (self-hosted). Ingen telemetry/ekstern analytics. OAuth tokens lagres krypteret (Fernet). "
+            "Evidens hentes kun ved manuel collect. Eksporter indeholder ikke tokens/secrets/keys. "
+            "Slet via Forget provider / Wipe all data.",
+            p,
+        )
+    )
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("Data handling statement (EN)", h))
+    story.append(
+        Paragraph(
+            "Generated locally (self-hosted). No telemetry/external analytics. OAuth tokens stored encrypted (Fernet). "
+            "Evidence fetched only on manual collect. Exports contain no tokens/secrets/keys. "
+            "Delete via Forget provider / Wipe all data.",
+            p,
+        )
+    )
+    story.append(Spacer(1, 10))
+
     for c in CONTROLS:
         ev = evidence_by_key.get(c.key) or {}
         status = ev.get("status") or "unknown"
@@ -50,4 +71,3 @@ def render_report_pdf(*, generated_at: datetime, evidence_by_key: dict[str, dict
 
     doc.build(story)
     return buf.getvalue()
-
