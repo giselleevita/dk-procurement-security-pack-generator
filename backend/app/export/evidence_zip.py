@@ -38,10 +38,6 @@ def build_evidence_zip(*, generated_at: datetime, app_version: str, user_id: str
         "files": files,
     }
 
-    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
-    manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
-    manifest["manifest_sha256"] = manifest_sha
-
     buf = BytesIO()
     with ZipFile(buf, "w", compression=ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8"))
@@ -49,4 +45,3 @@ def build_evidence_zip(*, generated_at: datetime, app_version: str, user_id: str
             z.writestr(fn, payload)
 
     return buf.getvalue(), manifest
-
