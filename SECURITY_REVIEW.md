@@ -109,7 +109,7 @@ This is validated by the export verification step in `VALIDATION_PLAN.md` (searc
 
 ### Top risks and mitigations (implemented)
 1. **Token theft from logs**
-   - Mitigation: do not log tokens or auth codes; avoid echoing provider responses containing secrets (current code does not log tokens).
+   - Mitigation: do not log tokens or auth codes; Uvicorn access logs are disabled to avoid logging OAuth callback query parameters (`backend/entrypoint.sh`).
 2. **CSRF on mutating endpoints**
    - Mitigation: CSRF token required via `X-CSRF-Token` header; session-bound token check in backend (`backend/app/api/deps.py`) and consistent client behavior (`frontend/src/api/client.ts`).
    - Additional: mutating requests with an `Origin` header must match an allowed origin list (`ALLOWED_ORIGINS`) to reduce CSRF surface.
