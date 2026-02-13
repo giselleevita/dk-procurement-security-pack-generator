@@ -50,3 +50,23 @@ def test_evidence_zip_manifest_hashes():
 
             assert hashlib.sha256(data).hexdigest() == f["sha256"]
 
+
+def test_evidence_zip_contains_no_secrets_markers():
+    from datetime import datetime
+
+    from app.export.evidence_zip import build_evidence_zip
+
+    payload, _manifest = build_evidence_zip(
+        generated_at=datetime(2026, 1, 1),
+        app_version="0.1.0",
+        user_id="u1",
+        evidence_by_key={
+            "c1": {"status": "pass", "collected_at": "t", "notes": "n", "artifacts": {"repo": "a/b"}},
+        },
+    )
+
+    blob = payload.lower()
+    # These are markers we never want to see in exports.
+    assert b"access_token" not in blob
+    assert b"refresh_token" not in blob
+    assert b"client_secret" not in blob
