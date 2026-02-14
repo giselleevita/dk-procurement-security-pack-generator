@@ -2,6 +2,8 @@
 
 Generate Danish procurement-ready security documentation locally (no SaaS) from Microsoft 365 (Graph) + GitHub evidence.
 
+Disclaimer: demo-grade MVP. Do not use in production without independent security review.
+
 ## 1-Command Local Run
 ```sh
 ./dev-up.sh
