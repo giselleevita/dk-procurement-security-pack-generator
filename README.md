@@ -29,6 +29,7 @@ Open:
   - **No OAuth tokens**
   - **No OAuth client secrets**
   - **No encryption keys**
+- Optional: local action audit log is recorded in the database (no tokens, no OAuth codes); cleared by "Wipe all data".
 - Safety actions:
   - **Forget provider** deletes provider tokens and clears that provider’s evidence.
   - **Wipe all data** deletes evidence + connections + oauth states + sessions and logs the user out.

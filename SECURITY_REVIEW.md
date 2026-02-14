@@ -54,6 +54,10 @@ All data is stored in Postgres and scoped to the local user account.
   - GitHub: repo names, default branch, derived branch-protection booleans, visibility counts, and limited per-repo details
   - Microsoft Graph: org display name/tenant id if accessible, Security Defaults response if accessible, Conditional Access policy count if accessible, directory roles count heuristic if accessible
 
+### 5) Audit events (local action log)
+- High-level actions only (no tokens, no OAuth codes, no full URLs)
+- Stored in `audit_events`: action + timestamp + small metadata (e.g. run id, export size)
+
 ## Where Data Is Stored
 - Postgres volume (`pg_data`) managed by Docker Compose (`docker-compose.yml`).
 
@@ -72,6 +76,7 @@ Action: “Wipe all data”
 - Deletes evidence runs and evidence rows for the current user
 - Deletes provider connections and OAuth states for the current user
 - Deletes sessions for the current user, clears cookies, and logs the user out
+- Deletes audit events for the current user
 
 ### Full database purge (admin / local operator)
 If you want to remove **all** stored data (including all local users), delete the Postgres volume:
