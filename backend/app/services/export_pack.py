@@ -20,6 +20,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
         raise ValueError("No evidence collected yet")
 
     generated_at = datetime.utcnow()
+    app_version = "0.1.0"
     rows = {r.control_key: r for r in latest_evidence_all_controls(db, user_id=user_id)}
     evidence_by_key: dict[str, dict] = {}
 
@@ -35,12 +36,12 @@ def export_pack(db: Session, *, user_id) -> bytes:
             "artifacts": r.artifacts,
         }
 
-    report_md = render_report_md(generated_at=generated_at, evidence_by_key=evidence_by_key).encode("utf-8")
-    report_pdf = render_report_pdf(generated_at=generated_at, evidence_by_key=evidence_by_key)
+    report_md = render_report_md(generated_at=generated_at, app_version=app_version, evidence_by_key=evidence_by_key).encode("utf-8")
+    report_pdf = render_report_pdf(generated_at=generated_at, app_version=app_version, evidence_by_key=evidence_by_key)
 
     evidence_zip_bytes, manifest = build_evidence_zip(
         generated_at=generated_at,
-        app_version="0.1.0",
+        app_version=app_version,
         user_id=str(user_id),
         evidence_by_key=evidence_by_key,
     )
