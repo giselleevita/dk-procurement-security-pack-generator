@@ -3,7 +3,8 @@
 Goal: demonstrate a Denmark procurement-ready, **local-only** security documentation pack generated from real evidence (GitHub + Microsoft Graph), with clear trust posture and safety actions.
 
 ## Setup (Before the Demo)
-- App is running via Docker Compose.
+- App is running locally:
+  - `./dev-up.sh`
 - You have a GitHub OAuth App and a Microsoft Entra app configured in `.env`.
 - You have a test user ready (or register during demo).
 
@@ -71,4 +72,3 @@ Say:
 - “We’re optimized for the Danish procurement workflow: a bilingual DK/EN pack with verifiable evidence.”
 - “Self-hosted by default to avoid vendor trust and clearance issues.”
 - “Deterministic output: no AI-generated claims, only evidence-backed statements.”
-

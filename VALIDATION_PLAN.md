@@ -64,9 +64,9 @@ Expected: lint passes; build succeeds.
 ## End-to-End Runtime Validation (Docker Compose)
 ### Boot
 ```sh
-./scripts/dev-up.sh
+./dev-up.sh
 ```
-Canonical run script: `./scripts/dev-up.sh`.
+Canonical run script: `./dev-up.sh`.
 
 Expected:
 - `web` available at `http://localhost:5173`

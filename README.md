@@ -4,10 +4,10 @@ Generate Danish procurement-ready security documentation locally (no SaaS) from 
 
 ## 1-Command Local Run
 ```sh
-./scripts/dev-up.sh
+./dev-up.sh
 ```
 
-Canonical run script: `./scripts/dev-up.sh` (this repo does not use `./dev-up.sh`).
+Canonical run script: `./dev-up.sh` (it delegates to `scripts/dev-up.sh`).
 
 This will:
 - create `.env` from `.env.example` if missing (including a generated `FERNET_KEY`)
