@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import AuthContext, get_auth_ctx, require_csrf
 from app.db.session import get_db
 from app.services.collect import collect_now
+from app.repos.audit_events import add_audit_event
 
 router = APIRouter(tags=["collect"])
 
@@ -24,5 +25,11 @@ def collect(
     _: None = Depends(require_csrf),
 ) -> CollectResponse:
     res = collect_now(db, user_id=auth.user.id)
+    add_audit_event(
+        db,
+        user_id=auth.user.id,
+        action="collect",
+        metadata={"run_id": res.get("run_id"), "status": res.get("status"), "errors": res.get("errors")},
+    )
     return CollectResponse(**res)
 

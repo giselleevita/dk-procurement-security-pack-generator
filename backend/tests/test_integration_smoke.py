@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from app.repos.audit_events import count_for_user
 
 
 def _fernet_key() -> str:
@@ -56,8 +57,28 @@ def test_smoke_register_collect_dashboard(monkeypatch):
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
 
+    c = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
+    assert c.status_code == 200
+
+    import uuid
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        assert count_for_user(db, user_id=user_id) >= 1
+    finally:
+        db.close()
+
     r2 = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
     assert r2.status_code == 200
+
+    import uuid
+
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        assert count_for_user(db, user_id=user_id) >= 1
+    finally:
+        db.close()
 
     dash = client.get("/api/dashboard")
     assert dash.status_code == 200
@@ -119,6 +140,17 @@ def test_oauth_denial_redirect_is_user_readable(monkeypatch):
     assert r.status_code == 200
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
+
+    c = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
+    assert c.status_code == 200
+
+    import uuid
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        assert count_for_user(db, user_id=user_id) >= 1
+    finally:
+        db.close()
 
     start = client.post("/api/oauth/github/start", headers={"X-CSRF-Token": csrf})
     assert start.status_code == 200
@@ -182,6 +214,17 @@ def test_collect_writes_complete_snapshot_even_on_provider_error(monkeypatch):
     assert r.status_code == 200
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
+
+    c = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
+    assert c.status_code == 200
+
+    import uuid
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        assert count_for_user(db, user_id=user_id) >= 1
+    finally:
+        db.close()
 
     # Insert a fake github connection so collector attempts GitHub and hits the monkeypatch.
     from app.crypto.fernet import encrypt_str
@@ -290,6 +333,13 @@ def test_forget_provider_deletes_tokens_and_provider_evidence(monkeypatch):
     resp = client.delete("/api/connections/github", headers={"X-CSRF-Token": csrf})
     assert resp.status_code == 200
 
+    db = TestingSessionLocal()
+    try:
+        # Forget provider logs exactly one audit event in this test.
+        assert count_for_user(db, user_id=user_id) == 1
+    finally:
+        db.close()
+
     # Evidence should be cleared for that provider.
     detail = client.get("/api/controls/gh.branch_protection").json()
     assert detail["status"] == "unknown"
@@ -333,8 +383,25 @@ def test_wipe_deletes_all_user_data_and_logs_out(monkeypatch):
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
 
+    c = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
+    assert c.status_code == 200
+
+    import uuid
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        assert count_for_user(db, user_id=user_id) >= 1
+    finally:
+        db.close()
+
     w = client.post("/api/wipe", headers={"X-CSRF-Token": csrf})
     assert w.status_code == 200
+
+    db = TestingSessionLocal()
+    try:
+        assert count_for_user(db, user_id=user_id) == 0
+    finally:
+        db.close()
 
     # Session should no longer be valid.
     me = client.get("/api/me")

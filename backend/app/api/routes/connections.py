@@ -10,6 +10,7 @@ from app.api.deps import AuthContext, get_auth_ctx, require_csrf
 from app.db.session import get_db
 from app.repos.connections import delete_connection, list_connections
 from app.repos.evidence import delete_user_evidence_for_provider
+from app.repos.audit_events import add_audit_event
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -55,4 +56,5 @@ def forget_provider(
         return {"ok": False, "error": "unknown_provider"}
     delete_connection(db, user_id=auth.user.id, provider=provider)
     delete_user_evidence_for_provider(db, user_id=auth.user.id, provider=provider)
+    add_audit_event(db, user_id=auth.user.id, action="forget_provider", metadata={"provider": provider})
     return {"ok": True}
