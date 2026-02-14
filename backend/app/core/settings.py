@@ -36,7 +36,11 @@ def get_settings() -> Settings:
 
 def parse_allowed_origins(settings: Settings) -> list[str]:
     if settings.allowed_origins.strip():
-        return [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+        origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+        if any(o == "*" for o in origins):
+            # Cookie-auth + credentials means wildcard origins are unsafe/misleading.
+            raise ValueError("ALLOWED_ORIGINS must not include '*' when using credentialed cookies")
+        return origins
     # Default to common local dev origins.
     return list({settings.web_base_url, "http://localhost:5173", "http://127.0.0.1:5173"})
 

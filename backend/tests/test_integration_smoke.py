@@ -1,8 +1,10 @@
 import base64
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 def _fernet_key() -> str:
@@ -22,7 +24,11 @@ def test_smoke_register_collect_dashboard(monkeypatch):
     from app.main import create_app
     from app.db.session import get_db
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -41,6 +47,11 @@ def test_smoke_register_collect_dashboard(monkeypatch):
 
     r = client.post("/api/auth/register", json={"email": "a@example.com", "password": "password123"})
     assert r.status_code == 200
+    set_cookie = (r.headers.get("set-cookie") or "").lower()
+    assert "dkpack_session=" in set_cookie
+    assert "httponly" in set_cookie
+    assert "samesite=lax" in set_cookie
+    assert "max-age=" in set_cookie
 
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
@@ -51,6 +62,20 @@ def test_smoke_register_collect_dashboard(monkeypatch):
     dash = client.get("/api/dashboard")
     assert dash.status_code == 200
     assert len(dash.json()) == 12
+
+
+def test_settings_rejects_wildcard_allowed_origins(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("ALLOWED_ORIGINS", "*")
+
+    from app.core.settings import get_settings, parse_allowed_origins
+
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    with pytest.raises(ValueError):
+        parse_allowed_origins(settings)
 
 
 def test_oauth_denial_redirect_is_user_readable(monkeypatch):
@@ -69,7 +94,11 @@ def test_oauth_denial_redirect_is_user_readable(monkeypatch):
     from app.main import create_app
     from app.db.session import get_db
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -99,7 +128,10 @@ def test_oauth_denial_redirect_is_user_readable(monkeypatch):
 
     state = parse_qs(urlparse(authorize_url).query)["state"][0]
 
-    cb = client.get(f"/api/oauth/github/callback?state={state}&error=access_denied&error_description=Denied")
+    cb = client.get(
+        f"/api/oauth/github/callback?state={state}&error=access_denied&error_description=Denied",
+        follow_redirects=False,
+    )
     assert cb.status_code in (302, 307)
     assert "/connections" in cb.headers.get("location", "")
     assert "status=error" in cb.headers.get("location", "")
@@ -118,7 +150,11 @@ def test_collect_writes_complete_snapshot_even_on_provider_error(monkeypatch):
     from app.main import create_app
     from app.db.session import get_db
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -193,7 +229,11 @@ def test_forget_provider_deletes_tokens_and_provider_evidence(monkeypatch):
     from app.main import create_app
     from app.db.session import get_db
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -268,7 +308,11 @@ def test_wipe_deletes_all_user_data_and_logs_out(monkeypatch):
     from app.main import create_app
     from app.db.session import get_db
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 

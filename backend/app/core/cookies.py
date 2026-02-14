@@ -9,7 +9,7 @@ SESSION_COOKIE_NAME = "dkpack_session"
 CSRF_COOKIE_NAME = "dkpack_csrf"
 
 
-def set_session_cookie(resp: Response, token: str) -> None:
+def set_session_cookie(resp: Response, token: str, *, max_age: int | None = None) -> None:
     settings = get_settings()
     resp.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -18,6 +18,7 @@ def set_session_cookie(resp: Response, token: str) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
         path="/",
+        max_age=max_age,
     )
 
 
@@ -26,7 +27,7 @@ def clear_session_cookie(resp: Response) -> None:
     resp.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax", secure=settings.cookie_secure)
 
 
-def set_csrf_cookie(resp: Response, token: str) -> None:
+def set_csrf_cookie(resp: Response, token: str, *, max_age: int | None = None) -> None:
     settings = get_settings()
     resp.set_cookie(
         key=CSRF_COOKIE_NAME,
@@ -35,10 +36,10 @@ def set_csrf_cookie(resp: Response, token: str) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
         path="/",
+        max_age=max_age,
     )
 
 
 def clear_csrf_cookie(resp: Response) -> None:
     settings = get_settings()
     resp.delete_cookie(key=CSRF_COOKIE_NAME, path="/", samesite="lax", secure=settings.cookie_secure)
-

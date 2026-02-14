@@ -15,6 +15,9 @@ def build_evidence_zip(*, generated_at: datetime, app_version: str, user_id: str
     artifact_payloads: dict[str, bytes] = {}
 
     for key, ev in evidence_by_key.items():
+        # Defensive: ensure filenames cannot be influenced into path traversal (zip slip).
+        safe_key = key.replace("\\", "_").replace("/", "_")
+        safe_key = safe_key.replace("..", "_")
         payload = json.dumps(
             {
                 "control_key": key,
@@ -27,7 +30,7 @@ def build_evidence_zip(*, generated_at: datetime, app_version: str, user_id: str
             sort_keys=True,
         ).encode("utf-8")
         sha = hashlib.sha256(payload).hexdigest()
-        filename = f"artifacts/{key}.json"
+        filename = f"artifacts/{safe_key}.json"
         artifact_payloads[filename] = payload
         files.append({"control_key": key, "filename": filename, "sha256": sha})
 

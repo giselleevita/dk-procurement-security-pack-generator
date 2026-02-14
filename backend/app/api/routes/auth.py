@@ -39,9 +39,17 @@ class MeResponse(BaseModel):
     created_at: datetime
 
 
-def _set_login_cookies(resp: Response, *, session_token: str, csrf_token: str) -> None:
-    set_session_cookie(resp, session_token)
-    set_csrf_cookie(resp, csrf_token)
+def _session_expiry_and_max_age() -> tuple[datetime, int]:
+    now = datetime.utcnow()
+    expires_at = default_session_expiry(now=now)
+    max_age = max(0, int((expires_at - now).total_seconds()))
+    return expires_at, max_age
+
+
+def _set_login_cookies(resp: Response, *, session_token: str, csrf_token: str, max_age: int) -> None:
+    # Align cookie expiry with server-side session expiry.
+    set_session_cookie(resp, session_token, max_age=max_age)
+    set_csrf_cookie(resp, csrf_token, max_age=max_age)
 
 
 @router.post("/register", response_model=MeResponse)
@@ -54,14 +62,15 @@ def register(payload: AuthRequest, response: Response, db: Session = Depends(get
 
     session_token = new_session_token()
     csrf_token = new_csrf_token()
+    expires_at, max_age = _session_expiry_and_max_age()
     create_session(
         db,
         user_id=user.id,
         token_hash=token_hash(session_token),
         csrf_token=csrf_token,
-        expires_at=default_session_expiry(),
+        expires_at=expires_at,
     )
-    _set_login_cookies(response, session_token=session_token, csrf_token=csrf_token)
+    _set_login_cookies(response, session_token=session_token, csrf_token=csrf_token, max_age=max_age)
     return MeResponse(id=str(user.id), email=user.email, created_at=user.created_at)
 
 
@@ -73,14 +82,15 @@ def login(payload: AuthRequest, response: Response, db: Session = Depends(get_db
 
     session_token = new_session_token()
     csrf_token = new_csrf_token()
+    expires_at, max_age = _session_expiry_and_max_age()
     create_session(
         db,
         user_id=user.id,
         token_hash=token_hash(session_token),
         csrf_token=csrf_token,
-        expires_at=default_session_expiry(),
+        expires_at=expires_at,
     )
-    _set_login_cookies(response, session_token=session_token, csrf_token=csrf_token)
+    _set_login_cookies(response, session_token=session_token, csrf_token=csrf_token, max_age=max_age)
     return MeResponse(id=str(user.id), email=user.email, created_at=user.created_at)
 
 
