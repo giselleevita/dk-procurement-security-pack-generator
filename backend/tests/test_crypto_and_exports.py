@@ -1,4 +1,5 @@
 import base64
+import re
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -21,6 +22,46 @@ def test_fernet_roundtrip(monkeypatch):
     ct = encrypt_str("secret-token")
     assert ct != "secret-token"
     assert decrypt_str(ct) == "secret-token"
+
+
+_JWT_LIKE_RE = re.compile(r"\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b")
+
+
+def _assert_no_secrets_in_texts(texts: list[str]) -> None:
+    blob = "\n".join(texts).lower()
+
+    # Common markers we never want to see in exported *text* files.
+    forbidden_substrings = [
+        "access_token",
+        "refresh_token",
+        "client_secret",
+        "bearer ",
+        "authorization:",
+        "code=",
+    ]
+    for s in forbidden_substrings:
+        assert s not in blob, f"Found forbidden marker in export text: {s}"
+
+    # JWT-like tokens (3 base64url-ish segments separated by dots).
+    assert _JWT_LIKE_RE.search(blob) is None, "Found JWT-like token pattern in export text"
+
+
+def _read_text_files_from_zip(z: ZipFile) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    for name in z.namelist():
+        lower = name.lower()
+        if lower.endswith(".pdf"):
+            continue
+        if not (lower.endswith(".md") or lower.endswith(".json") or lower.endswith(".txt")):
+            continue
+        data = z.read(name)
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            # If it is not valid UTF-8, treat it as non-text and skip to avoid false positives.
+            continue
+        out.append((name, text))
+    return out
 
 
 def test_evidence_zip_manifest_hashes():
@@ -62,18 +103,9 @@ def test_evidence_zip_contains_no_secrets_markers():
         },
     )
 
-    # Read only the included files (avoid false positives by scanning raw compressed bytes).
     with ZipFile(BytesIO(payload), "r") as z:
-        manifest = z.read("manifest.json").decode("utf-8").lower()
-        artifact = z.read("artifacts/c1.json").decode("utf-8").lower()
-        blob = (manifest + artifact).encode("utf-8")
-
-    # Markers we never want to see in exports (tokens/secrets/callback codes).
-    assert b"access_token" not in blob
-    assert b"refresh_token" not in blob
-    assert b"client_secret" not in blob
-    assert b"bearer " not in blob
-    assert b"code=" not in blob
+        texts = [t for _name, t in _read_text_files_from_zip(z)]
+    _assert_no_secrets_in_texts(texts)
 
 
 def test_export_pack_contains_expected_files_and_no_secret_markers(monkeypatch):
@@ -131,18 +163,13 @@ def test_export_pack_contains_expected_files_and_no_secret_markers(monkeypatch):
         assert "report.pdf" in names
         assert "evidence-pack.zip" in names
 
-        report_md = outer.read("report.md").decode("utf-8").lower()
         evidence_zip_bytes = outer.read("evidence-pack.zip")
+        outer_texts = [t for _name, t in _read_text_files_from_zip(outer)]
 
     with ZipFile(BytesIO(evidence_zip_bytes), "r") as inner:
         assert "manifest.json" in inner.namelist()
         # At least one control artifact must exist.
         assert any(n.startswith("artifacts/") and n.endswith(".json") for n in inner.namelist())
-        manifest = inner.read("manifest.json").decode("utf-8").lower()
+        inner_texts = [t for _name, t in _read_text_files_from_zip(inner)]
 
-    blob = (report_md + manifest).encode("utf-8")
-    assert b"access_token" not in blob
-    assert b"refresh_token" not in blob
-    assert b"client_secret" not in blob
-    assert b"bearer " not in blob
-    assert b"code=" not in blob
+    _assert_no_secrets_in_texts(outer_texts + inner_texts)
