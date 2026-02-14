@@ -66,6 +66,8 @@ Expected: lint passes; build succeeds.
 ```sh
 ./scripts/dev-up.sh
 ```
+Canonical run script: `./scripts/dev-up.sh`.
+
 Expected:
 - `web` available at `http://localhost:5173`
 - `api` health check: `http://localhost:8000/api/health` returns `{"status":"ok"}`

@@ -7,6 +7,8 @@ Generate Danish procurement-ready security documentation locally (no SaaS) from 
 ./scripts/dev-up.sh
 ```
 
+Canonical run script: `./scripts/dev-up.sh` (this repo does not use `./dev-up.sh`).
+
 This will:
 - create `.env` from `.env.example` if missing (including a generated `FERNET_KEY`)
 - start Postgres, FastAPI API, and the React dev server via Docker Compose
