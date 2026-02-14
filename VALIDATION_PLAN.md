@@ -50,7 +50,16 @@ docker compose exec api pytest
 ```
 Expected: all tests pass.
 
-Note: running backend tests on the host requires a supported Python version for dependencies (MVP targets Python 3.12 in Docker).
+Host-run option (no Docker): you can now run `pytest` from the repo root because `pytest.ini` sets `pythonpath=backend`.
+
+```sh
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+pytest -q
+```
+
+Expected: all tests pass. (Docker targets Python 3.12; Python 3.11+ is recommended on the host.)
 
 ### Frontend lint/build (optional but recommended)
 ```sh
