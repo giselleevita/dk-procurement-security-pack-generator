@@ -196,3 +196,15 @@ Expected:
 - Connections cleared
 - Evidence cleared (dashboard shows `unknown` / “No evidence”)
 - Session is revoked/logged out (or equivalent explicit behavior)
+
+## RC Checklist (Pre-Demo)
+1. Boot fresh: `./dev-up.sh`
+2. Open UI: `http://localhost:5173` and confirm `GET http://localhost:8000/api/health` returns `{"status":"ok"}`
+3. Register a new local user; confirm you land on Dashboard.
+4. Connect GitHub; confirm banner indicates success; revisit Connections page and verify status is Connected.
+5. Connect Microsoft; confirm banner indicates success (or a user-readable failure if consent is missing).
+6. Click `Collect now` twice; confirm Dashboard always shows exactly 12 controls.
+7. Open one control detail; confirm Notes + JSON artifacts render (no HTML injection).
+8. Export pack; unzip and verify `report.md`, `report.pdf`, `evidence-pack.zip` are present.
+9. Verify evidence-pack manifest hashes with the provided Python snippet; run the “no secrets” scan.
+10. Forget a provider and confirm its controls go `unknown`; then Wipe all data and confirm you are logged out.
