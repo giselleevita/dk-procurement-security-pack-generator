@@ -37,6 +37,7 @@ Say:
 - “OAuth tokens are stored **encrypted at rest** in Postgres (Fernet).”
 - “We do not log tokens. We only call GitHub/Graph when you explicitly collect evidence.”
 - “If admin consent is missing in Microsoft, we don’t crash; we mark controls as Unknown and explain why.”
+- “After OAuth you return to `/connections?provider=...&status=connected` (or `status=error&error=...`).”
 
 ### 1:30–2:10 — Collect evidence and show control detail
 Click:
@@ -53,8 +54,8 @@ Click:
 - `Export pack (ZIP)`
 
 Say:
-- “Export includes `report.md`, `report.pdf`, and `evidence-pack.zip`.”
-- “`evidence-pack.zip` has a `manifest.json` with **SHA-256 hashes** so integrity is verifiable.”
+- “Download name is `dk-security-pack.zip` and it includes `report.md`, `report.pdf`, and `evidence-pack.zip`.”
+- “`evidence-pack.zip` contains `manifest.json` and `artifacts/*.json`, with **SHA-256 hashes** so integrity is verifiable.”
 - “No secrets are included in the export packs: no tokens, no client secrets.”
 
 ### 2:40–3:00 — Safety actions (Forget provider + Wipe all data)
@@ -65,7 +66,7 @@ Click:
 
 Say:
 - “Forget provider deletes stored tokens and clears provider evidence deterministically.”
-- “Wipe all data deletes evidence and connections for the user. This is a local system; you can always purge it.”
+- “Wipe all data deletes evidence, connections, oauth states, and sessions, and logs you out. This is a local system; you can always purge it.”
 - “That’s the procurement trust posture: local-only, evidence-based, and easy to audit.”
 
 ## Denmark Procurement Pitch Lines (Use as Needed)

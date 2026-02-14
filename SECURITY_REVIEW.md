@@ -65,13 +65,13 @@ All data is stored in Postgres and scoped to the local user account.
 ### Forget provider
 Action: “Forget GitHub” / “Forget Microsoft”
 - Deletes stored OAuth tokens for that provider (provider connection row)
-- Deterministic behavior for provider evidence is enforced in code (see validation plan)
+- Deletes that provider’s stored evidence rows (provider controls become `unknown` until recollected)
 
 ### Wipe all data
 Action: “Wipe all data”
 - Deletes evidence runs and evidence rows for the current user
 - Deletes provider connections and OAuth states for the current user
-- Session handling on wipe is explicitly defined (see validation plan)
+- Deletes sessions for the current user, clears cookies, and logs the user out
 
 ### Full database purge (admin / local operator)
 If you want to remove **all** stored data (including all local users), delete the Postgres volume:

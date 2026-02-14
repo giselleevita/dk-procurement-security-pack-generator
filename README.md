@@ -23,13 +23,20 @@ Open:
 - OAuth tokens are stored **encrypted at rest** in Postgres using Fernet (`FERNET_KEY`).
 - If `FERNET_KEY` is rotated/changed, existing tokens can no longer be decrypted; users must **reconnect providers**.
 - Evidence is collected only when you click **Collect now**.
-- Export packs contain reports and evidence artifacts only:
+- Export packs are procurement evidence packs and contain reports and evidence artifacts only:
   - **No OAuth tokens**
   - **No OAuth client secrets**
   - **No encryption keys**
 - Safety actions:
   - **Forget provider** deletes provider tokens and clears that provider’s evidence.
-  - **Wipe all data** deletes evidence + connections and logs the user out.
+  - **Wipe all data** deletes evidence + connections + oauth states + sessions and logs the user out.
+
+## Export Naming and Structure
+- Download name: `dk-security-pack.zip`
+- Contents:
+  - `report.md`
+  - `report.pdf`
+  - `evidence-pack.zip` (contains `manifest.json` and `artifacts/*.json`)
 
 ## Required Configuration (.env)
 Edit `.env` and set:
@@ -46,6 +53,10 @@ GitHub OAuth App:
 
 Microsoft Entra App Registration:
 - `http://localhost:8000/api/oauth/microsoft/callback`
+
+After completing OAuth in the browser you are redirected back to the UI:
+- `/connections?provider=github&status=connected`
+- `/connections?provider=microsoft&status=error&error=...`
 
 ## Common Commands
 Migrations (runs automatically on API container start):

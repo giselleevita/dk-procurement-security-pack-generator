@@ -87,7 +87,7 @@ Expected:
 ### GitHub: success path
 1. UI: `Connect` page → `Connect GitHub` → authorize
 Expected:
-- Redirect returns to `/connections` and shows GitHub as Connected
+- Redirect returns to `/connections?provider=github&status=connected` and shows GitHub as Connected
 - No duplicate/stale connection rows (reconnect works cleanly after forget)
 
 ### GitHub: denial/error path
@@ -101,7 +101,7 @@ Expected:
 ### Microsoft: success path
 1. UI: `Connect Microsoft` → authorize
 Expected:
-- Redirect returns to `/connections` and shows Microsoft as Connected
+- Redirect returns to `/connections?provider=microsoft&status=connected` and shows Microsoft as Connected
 
 ### Microsoft: missing admin consent / denial
 1. Attempt connect in a tenant without required admin consent, or deny consent
@@ -137,6 +137,10 @@ Expected: includes:
 - `report.md`
 - `report.pdf`
 - `evidence-pack.zip`
+
+And `evidence-pack.zip` includes:
+- `manifest.json`
+- `artifacts/*.json`
 
 ### Evidence ZIP manifest + hash verification
 ```sh
@@ -195,7 +199,8 @@ Expected:
 Expected:
 - Connections cleared
 - Evidence cleared (dashboard shows `unknown` / “No evidence”)
-- Session is revoked/logged out (or equivalent explicit behavior)
+- OAuth states cleared
+- Sessions cleared and user is logged out (cookies cleared)
 
 ## RC Checklist (Pre-Demo)
 1. Boot fresh: `./dev-up.sh`
