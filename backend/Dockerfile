@@ -2,6 +2,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Ensure console_scripts (e.g. `pytest`) can import the local package.
+ENV PYTHONPATH=/app
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
