@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     app_base_url: str = "http://localhost:8000"
     web_base_url: str = "http://localhost:5173"
+    exports_dir: str = "exports"
     allowed_origins: str = ""
     allowed_hosts: str = ""
 

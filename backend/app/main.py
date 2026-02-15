@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.api.router import router as api_router
+from app.services.pack_signing import ensure_signing_material
 from app.core.settings import get_settings, parse_allowed_hosts, parse_allowed_origins
 
 
@@ -38,6 +39,11 @@ def create_app() -> FastAPI:
         resp.headers.setdefault("Referrer-Policy", "no-referrer")
         resp.headers.setdefault("X-Frame-Options", "DENY")
         return resp
+
+    @app.on_event("startup")
+    async def _ensure_pack_signing_key() -> None:
+        # Creates signing material on disk if missing (no external calls).
+        ensure_signing_material()
 
     app.include_router(api_router, prefix="/api")
     return app

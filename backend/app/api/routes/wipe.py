@@ -11,6 +11,7 @@ from app.repos.evidence import delete_all_user_data
 from app.repos.oauth_states import delete_all_for_user
 from app.repos.sessions import delete_all_sessions_for_user
 from app.repos.audit_events import delete_all_for_user as delete_all_audit_events
+from app.services.export_store import delete_exports_for_user
 
 router = APIRouter(tags=["safety"])
 
@@ -28,6 +29,7 @@ def wipe(
     delete_connection(db, user_id=auth.user.id, provider="microsoft")
     delete_all_sessions_for_user(db, user_id=auth.user.id)
     delete_all_audit_events(db, user_id=auth.user.id)
+    delete_exports_for_user(user_id=str(auth.user.id))
     clear_session_cookie(response)
     clear_csrf_cookie(response)
     return {"ok": True}
