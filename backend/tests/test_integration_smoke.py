@@ -406,3 +406,94 @@ def test_wipe_deletes_all_user_data_and_logs_out(monkeypatch):
     # Session should no longer be valid.
     me = client.get("/api/me")
     assert me.status_code == 401
+
+
+def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
+    import json
+    from io import BytesIO
+    from zipfile import ZipFile
+
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+    monkeypatch.setenv("EXPORTS_DIR", str(tmp_path))
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    Base.metadata.create_all(bind=engine)
+
+    client = TestClient(app)
+    r = client.post("/api/auth/register", json={"email": "xpack@example.com", "password": "password123"})
+    assert r.status_code == 200
+
+    csrf = client.cookies.get("dkpack_csrf")
+    assert csrf
+
+    # Ensure an evidence run exists so export is allowed.
+    c = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
+    assert c.status_code == 200
+
+    exp = client.post("/api/export", headers={"X-CSRF-Token": csrf})
+    assert exp.status_code == 200
+
+    outer_bytes = exp.content
+    with ZipFile(BytesIO(outer_bytes), "r") as outer:
+        names = set(outer.namelist())
+        assert "pack_manifest.json" in names
+        assert "pack_manifest.sig" in names
+        manifest = json.loads(outer.read("pack_manifest.json").decode("utf-8"))
+        export_id = manifest["export_id"]
+
+    v = client.get(f"/api/exports/{export_id}/verify")
+    assert v.status_code == 200
+    assert v.json()["verified"] is True
+
+    # Tamper with report.md on disk without updating hashes/signature.
+    import uuid
+
+    user_id = uuid.UUID(r.json()["id"])
+    pack_path = tmp_path / "users" / str(user_id) / f"{export_id}.zip"
+    assert pack_path.exists()
+
+    with ZipFile(BytesIO(pack_path.read_bytes()), "r") as z:
+        items = [(n, z.read(n)) for n in z.namelist()]
+
+    tampered = BytesIO()
+    with ZipFile(tampered, "w") as z2:
+        for name, data in items:
+            if name == "report.md":
+                z2.writestr(name, data + b"\nTAMPERED\n")
+            else:
+                z2.writestr(name, data)
+
+    pack_path.write_bytes(tampered.getvalue())
+
+    v2 = client.get(f"/api/exports/{export_id}/verify")
+    assert v2.status_code == 200
+    body = v2.json()
+    assert body["verified"] is False
+    assert body["details"]["hash_mismatches"], "Expected hash mismatch after tampering"

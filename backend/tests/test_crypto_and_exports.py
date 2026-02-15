@@ -52,7 +52,7 @@ def _read_text_files_from_zip(z: ZipFile) -> list[tuple[str, str]]:
         lower = name.lower()
         if lower.endswith(".pdf"):
             continue
-        if not (lower.endswith(".md") or lower.endswith(".json") or lower.endswith(".txt")):
+        if not (lower.endswith(".md") or lower.endswith(".json") or lower.endswith(".txt") or lower.endswith(".sig")):
             continue
         data = z.read(name)
         try:
@@ -162,6 +162,8 @@ def test_export_pack_contains_expected_files_and_no_secret_markers(monkeypatch):
         assert "report.md" in names
         assert "report.pdf" in names
         assert "evidence-pack.zip" in names
+        assert "pack_manifest.json" in names
+        assert "pack_manifest.sig" in names
 
         evidence_zip_bytes = outer.read("evidence-pack.zip")
         outer_texts = [t for _name, t in _read_text_files_from_zip(outer)]

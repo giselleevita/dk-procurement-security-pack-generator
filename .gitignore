@@ -26,3 +26,7 @@ dist/
 exports/
 tmp/
 
+
+# Backend state (local-only)
+backend/app/state/
+backend/exports/

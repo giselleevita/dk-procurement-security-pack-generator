@@ -34,6 +34,12 @@ Open:
   - **Forget provider** deletes provider tokens and clears that provider’s evidence.
   - **Wipe all data** deletes evidence + connections + oauth states + sessions and logs the user out.
 
+## Evidence integrity (signed packs)
+- Each downloaded `dk-security-pack.zip` includes `pack_manifest.json` (SHA-256 hashes for `report.md`, `report.pdf`, `evidence-pack.zip`) and `pack_manifest.sig` (signature).
+- Signing mode: Ed25519 (preferred) using a local instance key stored under `backend/app/state/` (gitignored).
+- This is tamper-evident: changes to the pack payload files are detected by hash mismatch and/or signature failure.
+- Limitation: the trust anchor is the local instance key; if the instance is reinstalled or the key is rotated, old packs may not verify against the new instance key.
+
 ## Export Naming and Structure
 - Download name: `dk-security-pack.zip`
 - Contents:
