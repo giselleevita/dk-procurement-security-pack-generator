@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -22,6 +22,19 @@ class AuthContext:
     session: DbSession
 
 
+
+
+def _as_aware_utc(dt: datetime) -> datetime:
+    # Postgres may return tz-aware datetimes; SQLite may return naive. Normalize to aware UTC.
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def get_auth_ctx(request: Request, db: Session = Depends(get_db)) -> AuthContext:
     raw = request.cookies.get(SESSION_COOKIE_NAME)
     if not raw:
@@ -32,7 +45,7 @@ def get_auth_ctx(request: Request, db: Session = Depends(get_db)) -> AuthContext
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
     if sess.revoked_at is not None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
-    if sess.expires_at < datetime.utcnow():
+    if _as_aware_utc(sess.expires_at) < _utcnow():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
 
     user = get_user_by_id(db, sess.user_id)

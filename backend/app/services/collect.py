@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -362,7 +362,7 @@ def _collect_microsoft(db: Session, *, user_id, run_id) -> None:
 
 def _collect_pack_hygiene(db: Session, *, user_id, run_id) -> None:
     latest_rows = {r.control_key: r for r in _latest_run_rows(db, user_id=user_id, run_id=run_id)}
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Evidence freshness: warn if newest evidence older than 7 days.
     newest = max((r.collected_at for r in latest_rows.values()), default=None)
@@ -371,7 +371,12 @@ def _collect_pack_hygiene(db: Session, *, user_id, run_id) -> None:
         artifacts = {"newest_collected_at": None}
         notes = "No evidence collected yet."
     else:
-        stale = newest < (now - timedelta(days=7))
+        newest_utc = newest
+        if newest_utc.tzinfo is None:
+            newest_utc = newest_utc.replace(tzinfo=timezone.utc)
+        else:
+            newest_utc = newest_utc.astimezone(timezone.utc)
+        stale = newest_utc < (now - timedelta(days=7))
         status = "warn" if stale else "pass"
         artifacts = {"newest_collected_at": newest.isoformat() + "Z", "stale_days_threshold": 7}
         notes = "Evidence should be refreshed regularly for procurement processes."
