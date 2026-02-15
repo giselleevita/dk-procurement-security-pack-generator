@@ -9,6 +9,22 @@ Disclaimer: demo-grade MVP. Do not use in production without independent securit
 ./dev-up.sh
 ```
 
+## Demo mode (offline)
+For a demo that does not require GitHub/Microsoft OAuth, start with `APP_ENV=demo` and seed a deterministic demo user + evidence snapshot:
+
+```sh
+# Start containers
+./dev-up.sh -d
+
+# Seed demo user + 12-control snapshot
+docker compose exec api python -m app.scripts.seed_demo
+
+# Login in the UI
+# email: demo@example.com
+# password: password123
+```
+
+
 Canonical run script: `./dev-up.sh`.
 
 This will:

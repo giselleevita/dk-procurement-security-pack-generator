@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.core.settings import get_settings
 from app.providers.github_api import GitHubApi, GitHubApiError
 from app.providers.graph_api import GraphApi, GraphApiError
 from app.repos.connections import get_connection
@@ -30,6 +31,12 @@ MICROSOFT_CONTROL_KEYS = (
 
 def collect_now(db: Session, *, user_id) -> dict:
     run = create_run(db, user_id=user_id)
+
+    settings = get_settings()
+    if settings.app_env == "demo":
+        write_demo_snapshot(db, user_id=user_id, run_id=run.id)
+        finish_run(db, run_id=run.id, status="success", error_summary=None)
+        return {"run_id": str(run.id), "status": "success", "errors": []}
 
     errors: list[str] = []
 
@@ -73,6 +80,107 @@ def collect_now(db: Session, *, user_id) -> dict:
         finish_run(db, run_id=run.id, status="success", error_summary=None)
 
     return {"run_id": str(run.id), "status": "partial" if errors else "success", "errors": errors}
+
+
+def write_demo_snapshot(db: Session, *, user_id, run_id=None) -> dict:
+    """Write a deterministic 12-control demo snapshot.
+
+    This is synthetic evidence intended for offline demos. No external calls.
+    """
+
+    if run_id is None:
+        run = create_run(db, user_id=user_id)
+        run_id = run.id
+
+    demo_note = "DEMO: synthetic evidence for offline demonstration only."
+
+    # Microsoft controls
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="ms.security_defaults",
+        provider="microsoft",
+        status="pass",
+        artifacts={"demo": True, "security_defaults_enabled": True},
+        notes=demo_note,
+    )
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="ms.conditional_access_presence",
+        provider="microsoft",
+        status="warn",
+        artifacts={"demo": True, "conditional_access_policies_count": 2},
+        notes=demo_note,
+    )
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="ms.admin_surface_area",
+        provider="microsoft",
+        status="warn",
+        artifacts={"demo": True, "directory_roles_count": 12, "high_priv_roles_count": 3},
+        notes=demo_note,
+    )
+
+    # GitHub controls
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="gh.branch_protection",
+        provider="github",
+        status="pass",
+        artifacts={"demo": True, "repos_sampled": 5, "protected_default_branch": 5},
+        notes=demo_note,
+    )
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="gh.pr_reviews_required",
+        provider="github",
+        status="pass",
+        artifacts={"demo": True, "repos_sampled": 5, "required_reviews": 5},
+        notes=demo_note,
+    )
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="gh.force_pushes_disabled",
+        provider="github",
+        status="pass",
+        artifacts={"demo": True, "repos_sampled": 5, "force_push_enabled": 0},
+        notes=demo_note,
+    )
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="gh.enforce_admins",
+        provider="github",
+        status="warn",
+        artifacts={"demo": True, "repos_sampled": 5, "enforce_admins_enabled": 3},
+        notes=demo_note,
+    )
+    add_control_evidence(
+        db,
+        user_id=user_id,
+        run_id=run_id,
+        control_key="gh.repo_visibility_review",
+        provider="github",
+        status="warn",
+        artifacts={"demo": True, "repos_sampled": 5, "public_repos": 1, "private_repos": 4},
+        notes=demo_note,
+    )
+
+    # Pack hygiene controls computed from what we just stored.
+    _collect_pack_hygiene(db, user_id=user_id, run_id=run_id)
+    return {"run_id": str(run_id)}
 
 
 def _collect_github(db: Session, *, user_id, run_id) -> None:
