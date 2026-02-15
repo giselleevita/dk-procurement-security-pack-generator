@@ -4,6 +4,8 @@ import base64
 import json
 from dataclasses import dataclass
 from datetime import datetime
+
+from app.core.time import isoformat_z, utcnow
 from pathlib import Path
 
 from app.core.settings import get_settings
@@ -108,7 +110,7 @@ def ensure_signing_material() -> SigningMaterial:
 
         payload = {
             "mode": "ed25519",
-            "created_at_utc": datetime.utcnow().isoformat() + "Z",
+            "created_at_utc": isoformat_z(utcnow()),
             "public_key_b64": _b64e(pub_raw),
             "encrypted_private_key": encrypt_str(_b64e(priv_raw)),
         }
@@ -116,7 +118,7 @@ def ensure_signing_material() -> SigningMaterial:
         # Fallback: HMAC based on Fernet key.
         payload = {
             "mode": "hmac",
-            "created_at_utc": datetime.utcnow().isoformat() + "Z",
+            "created_at_utc": isoformat_z(utcnow()),
         }
 
     tmp = path.with_suffix(".tmp")

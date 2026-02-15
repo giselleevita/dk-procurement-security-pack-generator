@@ -1,7 +1,16 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+
+from app.core.time import utcnow
+
+def _as_aware_utc(dt: datetime) -> datetime:
+    # SQLite may return tz-naive values even with timezone=True; normalize for comparisons.
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -33,7 +42,7 @@ def consume_state(db: Session, *, user_id: uuid.UUID, provider: str, state: str)
     row = db.execute(stmt).scalars().first()
     if row is None:
         return None
-    if row.expires_at < datetime.utcnow():
+    if _as_aware_utc(row.expires_at) < utcnow():
         delete_state(db, state=state)
         return None
     delete_state(db, state=state)
@@ -47,7 +56,7 @@ def delete_state(db: Session, *, state: str) -> None:
 
 
 def delete_expired_states(db: Session) -> None:
-    stmt = delete(OAuthState).where(OAuthState.expires_at < datetime.utcnow())
+    stmt = delete(OAuthState).where(OAuthState.expires_at < utcnow())
     db.execute(stmt)
     db.commit()
 

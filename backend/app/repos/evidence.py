@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from app.core.time import utcnow
+
 from sqlalchemy import delete, desc, select
 from sqlalchemy.orm import Session
 
@@ -10,7 +12,7 @@ from app.models.evidence import ControlEvidence, EvidenceRun
 
 
 def create_run(db: Session, *, user_id: uuid.UUID) -> EvidenceRun:
-    run = EvidenceRun(user_id=user_id, started_at=datetime.utcnow(), status="success")
+    run = EvidenceRun(user_id=user_id, started_at=utcnow(), status="success")
     db.add(run)
     db.commit()
     db.refresh(run)
@@ -26,7 +28,7 @@ def finish_run(db: Session, *, run_id: uuid.UUID, status: str, error_summary: st
     run = db.get(EvidenceRun, run_id)
     if run is None:
         return
-    run.finished_at = datetime.utcnow()
+    run.finished_at = utcnow()
     run.status = status
     run.error_summary = error_summary
     db.add(run)
@@ -53,7 +55,7 @@ def add_control_evidence(
         status=status,
         artifacts=artifacts,
         notes=notes,
-        collected_at=collected_at or datetime.utcnow(),
+        collected_at=collected_at or utcnow(),
     )
     db.add(row)
     db.commit()

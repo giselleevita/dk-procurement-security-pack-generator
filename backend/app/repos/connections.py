@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from app.core.time import utcnow
+
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
@@ -45,8 +47,8 @@ def upsert_connection(
             token_type=token_type,
             expires_at=expires_at,
             provider_account_id=provider_account_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utcnow(),
+            updated_at=utcnow(),
         )
         db.add(row)
         db.commit()
@@ -63,7 +65,7 @@ def upsert_connection(
             token_type=token_type,
             expires_at=expires_at,
             provider_account_id=provider_account_id,
-            updated_at=datetime.utcnow(),
+            updated_at=utcnow(),
         )
         .returning(ProviderConnection)
     )

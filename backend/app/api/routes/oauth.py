@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta
+
+from app.core.time import utcnow
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -52,7 +54,7 @@ def github_start(
 
     delete_expired_states(db)
     state = secrets.token_urlsafe(24)
-    create_state(db, user_id=auth.user.id, provider="github", state=state, expires_at=datetime.utcnow() + timedelta(minutes=10))
+    create_state(db, user_id=auth.user.id, provider="github", state=state, expires_at=utcnow() + timedelta(minutes=10))
 
     scope = "repo read:org read:user"
     q = urlencode(
@@ -136,7 +138,7 @@ def microsoft_start(
 
     delete_expired_states(db)
     state = secrets.token_urlsafe(24)
-    create_state(db, user_id=auth.user.id, provider="microsoft", state=state, expires_at=datetime.utcnow() + timedelta(minutes=10))
+    create_state(db, user_id=auth.user.id, provider="microsoft", state=state, expires_at=utcnow() + timedelta(minutes=10))
 
     q = urlencode(
         {

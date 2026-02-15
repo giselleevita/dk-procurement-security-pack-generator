@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from app.core.time import utcnow
+
 import requests
 
 
@@ -46,7 +48,7 @@ def exchange_code(
         raise ValueError(f"Microsoft token exchange failed: {data}")
     expires_at = None
     if "expires_in" in data:
-        expires_at = datetime.utcnow() + timedelta(seconds=int(data["expires_in"]))
+        expires_at = utcnow() + timedelta(seconds=int(data["expires_in"]))
     return MicrosoftToken(
         access_token=data["access_token"],
         refresh_token=data.get("refresh_token"),
@@ -81,7 +83,7 @@ def refresh(
         raise ValueError(f"Microsoft token refresh failed: {data}")
     expires_at = None
     if "expires_in" in data:
-        expires_at = datetime.utcnow() + timedelta(seconds=int(data["expires_in"]))
+        expires_at = utcnow() + timedelta(seconds=int(data["expires_in"]))
     return MicrosoftToken(
         access_token=data["access_token"],
         refresh_token=data.get("refresh_token") or refresh_token,

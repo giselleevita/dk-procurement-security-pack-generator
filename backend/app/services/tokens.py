@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+from app.core.time import utcnow
 
 from sqlalchemy.orm import Session
 
@@ -23,6 +25,14 @@ class TokenExpiredError(TokenError):
     pass
 
 
+def _as_aware_utc(dt: datetime) -> datetime:
+    # DB backends may return tz-naive or tz-aware datetimes; normalize to aware UTC.
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+
 def get_github_access_token(conn: ProviderConnection) -> str:
     try:
         return decrypt_str(conn.encrypted_access_token)
@@ -41,7 +51,7 @@ def get_microsoft_access_token(db: Session, conn: ProviderConnection) -> str:
         return token
 
     # Refresh a bit early to avoid race near expiry.
-    if conn.expires_at > (datetime.utcnow() + timedelta(seconds=60)):
+    if _as_aware_utc(conn.expires_at) > (utcnow() + timedelta(seconds=60)):
         return token
 
     if not conn.encrypted_refresh_token:

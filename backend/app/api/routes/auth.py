@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from app.core.time import utcnow
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -40,7 +42,7 @@ class MeResponse(BaseModel):
 
 
 def _session_expiry_and_max_age() -> tuple[datetime, int]:
-    now = datetime.utcnow()
+    now = utcnow()
     expires_at = default_session_expiry(now=now)
     max_age = max(0, int((expires_at - now).total_seconds()))
     return expires_at, max_age

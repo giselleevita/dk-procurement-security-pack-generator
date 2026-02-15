@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from app.core.time import utcnow
+
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -22,7 +24,7 @@ def create_session(
         token_hash=token_hash,
         csrf_token=csrf_token,
         expires_at=expires_at,
-        last_seen_at=datetime.utcnow(),
+        last_seen_at=utcnow(),
     )
     db.add(s)
     db.commit()
@@ -36,13 +38,13 @@ def get_session_by_token_hash(db: Session, token_hash: str) -> DbSession | None:
 
 
 def touch_session(db: Session, session_id: uuid.UUID) -> None:
-    stmt = update(DbSession).where(DbSession.id == session_id).values(last_seen_at=datetime.utcnow())
+    stmt = update(DbSession).where(DbSession.id == session_id).values(last_seen_at=utcnow())
     db.execute(stmt)
     db.commit()
 
 
 def revoke_session(db: Session, session_id: uuid.UUID) -> None:
-    stmt = update(DbSession).where(DbSession.id == session_id).values(revoked_at=datetime.utcnow())
+    stmt = update(DbSession).where(DbSession.id == session_id).values(revoked_at=utcnow())
     db.execute(stmt)
     db.commit()
 

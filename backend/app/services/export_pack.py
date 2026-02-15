@@ -4,6 +4,8 @@ import base64
 import hashlib
 import uuid
 from datetime import datetime
+
+from app.core.time import utcnow
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -23,7 +25,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
     if run is None:
         raise ValueError("No evidence collected yet")
 
-    generated_at = datetime.utcnow()
+    generated_at = utcnow()
     app_version = "0.1.0"
     export_id = uuid.uuid4().hex
 

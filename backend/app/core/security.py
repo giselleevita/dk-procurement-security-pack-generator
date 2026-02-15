@@ -4,6 +4,8 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 
+from app.core.time import utcnow
+
 import bcrypt
 
 
@@ -35,6 +37,6 @@ def new_csrf_token() -> str:
 
 def default_session_expiry(now: datetime | None = None, *, hours: int = 24) -> datetime:
     if now is None:
-        now = datetime.utcnow()
+        now = utcnow()
     return now + timedelta(hours=hours)
 

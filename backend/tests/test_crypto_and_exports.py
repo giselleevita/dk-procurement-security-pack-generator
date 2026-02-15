@@ -3,6 +3,8 @@ import re
 from io import BytesIO
 from zipfile import ZipFile
 
+from app.core.time import utcnow
+
 
 def _fernet_key() -> str:
     # urlsafe base64 of 32 bytes
@@ -150,7 +152,7 @@ def test_export_pack_contains_expected_files_and_no_secret_markers(monkeypatch):
             status="pass",
             artifacts={"repos_sampled": 1},
             notes="ok",
-            collected_at=datetime.utcnow(),
+            collected_at=utcnow(),
         )
 
         outer_bytes = export_pack(db, user_id=user_id)
