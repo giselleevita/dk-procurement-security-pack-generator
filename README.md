@@ -19,6 +19,9 @@ Open:
 - Web UI: `http://localhost:5173`
 - API health: `http://localhost:8000/api/health`
 
+First-time use: click **Register** in the UI and create a local account (email must be a valid format, e.g. `demo@example.com`).
+
+
 ## Data Handling Statement (Procurement-Friendly)
 - Self-hosted and local-only: runs in your environment via Docker Compose.
 - No SaaS, no telemetry, no external analytics.
