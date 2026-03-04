@@ -1,0 +1,16 @@
+# docker-compose.demo.yml — Demo mode override
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+#
+# Sets APP_ENV=demo on the API service which:
+#   - Seeds a demo user (demo@dkpack.io / demo1234567) on startup
+#   - Pre-fills CloudSec ApS vendor profile and all attestations
+#   - Pre-loads a realistic evidence snapshot
+#   - Exposes a one-click /api/auth/demo-login endpoint
+#   - Shows demo banner and "Try Demo" button in the UI
+
+services:
+  api:
+    environment:
+      APP_ENV: demo

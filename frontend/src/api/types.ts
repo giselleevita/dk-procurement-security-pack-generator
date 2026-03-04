@@ -65,3 +65,9 @@ export type Attestation = {
   attested_at?: string | null;
   updated_at?: string | null;
 };
+
+export type Health = {
+  status: string;
+  demo_mode: boolean;
+  demo_email: string | null;
+};

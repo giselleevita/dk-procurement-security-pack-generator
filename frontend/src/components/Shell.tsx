@@ -5,10 +5,12 @@ import type { Me } from "../api/types";
 export function Shell({
   me,
   onLoggedOut,
+  demoMode,
   children,
 }: {
   me: Me;
   onLoggedOut: () => void;
+  demoMode?: boolean;
   children: React.ReactNode;
 }) {
   const nav = useNavigate();
@@ -24,6 +26,11 @@ export function Shell({
 
   return (
     <div className="shell">
+      {demoMode && (
+        <div className="demo-banner">
+          🎬 Demo mode — pre-filled with <strong>CloudSec ApS</strong> sample data. Changes reset on restart.
+        </div>
+      )}
       <header className="topbar">
         <div className="brand">
           <Link to="/">DK Security Pack</Link>
@@ -43,4 +50,3 @@ export function Shell({
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -27,17 +28,19 @@ def upsert_attestation(
     status: str,
     notes: str,
     attested_by: str,
+    attested_at: datetime | None = None,
 ) -> Attestation:
     att = get_attestation(db, user_id=user_id, control_key=control_key)
     now = utcnow()
+    stamp = attested_at or now
     if att is None:
-        att = Attestation(user_id=user_id, control_key=control_key, attested_at=now, updated_at=now)
+        att = Attestation(user_id=user_id, control_key=control_key, attested_at=stamp, updated_at=now)
         db.add(att)
 
     att.status = status
     att.notes = notes
     att.attested_by = attested_by
-    att.attested_at = now
+    att.attested_at = stamp
     att.updated_at = now
     db.commit()
     db.refresh(att)

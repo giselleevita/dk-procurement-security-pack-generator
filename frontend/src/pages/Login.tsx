@@ -3,7 +3,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { Me } from "../api/types";
 
-export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
+export function LoginPage({
+  onAuthed,
+  demoMode,
+  demoEmail,
+}: {
+  onAuthed: (me: Me) => void;
+  demoMode?: boolean;
+  demoEmail?: string | null;
+}) {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,10 +34,42 @@ export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
     }
   }
 
+  async function demoLogin() {
+    setErr(null);
+    setBusy(true);
+    try {
+      const me = await api.post<Me>("/api/auth/demo-login");
+      onAuthed(me);
+      nav("/");
+    } catch (e2) {
+      const msg = e2 instanceof ApiError ? JSON.stringify(e2.detail) : "Demo login failed";
+      setErr(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="auth">
       <h1>DK Security Pack</h1>
       <p className="muted">Local-only procurement security documentation pack generator.</p>
+      {demoMode && (
+        <div className="demo-callout card">
+          <p className="demo-callout__title">🎬 Demo mode</p>
+          <p className="muted">
+            Pre-filled with sample data for <strong>CloudSec ApS</strong>. No setup required.
+          </p>
+          {demoEmail && (
+            <p className="muted demo-callout__creds">
+              Email: <code>{demoEmail}</code> · Password: <code>demo1234567</code>
+            </p>
+          )}
+          <button className="btn-demo" onClick={demoLogin} disabled={busy} type="button">
+            {busy ? "Signing in..." : "Try demo — one click"}
+          </button>
+          <div className="demo-callout__divider">or sign in manually below</div>
+        </div>
+      )}
       <form onSubmit={submit} className="card">
         <h2>Login</h2>
         <label>
@@ -57,4 +97,3 @@ export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
     </div>
   );
 }
-

@@ -41,9 +41,23 @@ def create_app() -> FastAPI:
         return resp
 
     @app.on_event("startup")
-    async def _ensure_pack_signing_key() -> None:
+    async def _on_startup() -> None:
+        import logging
         # Creates signing material on disk if missing (no external calls).
         ensure_signing_material()
+
+        # In demo mode: seed a realistic demo user + data if not already present.
+        if settings.app_env == "demo":
+            from app.db.session import _sessionmaker
+            from app.services.demo_seed import seed_demo_data
+
+            db = _sessionmaker()()
+            try:
+                seed_demo_data(db, demo_email=settings.demo_email, demo_password=settings.demo_password)
+            except Exception as exc:  # noqa: BLE001
+                logging.getLogger(__name__).warning("Demo seed failed (non-fatal): %s", exc)
+            finally:
+                db.close()
 
     app.include_router(api_router, prefix="/api")
     return app

@@ -22,6 +22,7 @@ from app.core.security import (
     token_hash,
     verify_password,
 )
+from app.core.settings import get_settings
 from app.db.session import get_db
 from app.repos.sessions import create_session, revoke_session
 from app.repos.users import create_user, get_user_by_email
@@ -113,3 +114,28 @@ def logout(
 def me(auth: AuthContext = Depends(get_auth_ctx)) -> MeResponse:
     u = auth.user
     return MeResponse(id=str(u.id), email=u.email, created_at=u.created_at)
+
+
+@router.post("/demo-login", response_model=MeResponse)
+def demo_login(response: Response, db: Session = Depends(get_db)) -> MeResponse:
+    """One-click login for demo mode. Only active when APP_ENV=demo."""
+    settings = get_settings()
+    if settings.app_env != "demo":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    user = get_user_by_email(db, settings.demo_email)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Demo not ready")
+
+    session_token = new_session_token()
+    csrf_token = new_csrf_token()
+    expires_at, max_age = _session_expiry_and_max_age()
+    create_session(
+        db,
+        user_id=user.id,
+        token_hash=token_hash(session_token),
+        csrf_token=csrf_token,
+        expires_at=expires_at,
+    )
+    _set_login_cookies(response, session_token=session_token, csrf_token=csrf_token, max_age=max_age)
+    return MeResponse(id=str(user.id), email=user.email, created_at=user.created_at)

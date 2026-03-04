@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useMe } from "./hooks/useMe";
-import type { Me } from "./api/types";
+import { api } from "./api/client";
+import type { Me, Health } from "./api/types";
 import { LoginPage } from "./pages/Login";
 import { RegisterPage } from "./pages/Register";
 import { DashboardPage } from "./pages/Dashboard";
@@ -12,6 +14,20 @@ import { Shell } from "./components/Shell";
 
 export default function App() {
   const { me, setMe, loading } = useMe();
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoEmail, setDemoEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<Health>("/api/health")
+      .then((h) => {
+        setDemoMode(h.demo_mode);
+        setDemoEmail(h.demo_email);
+      })
+      .catch(() => {
+        // health check failure is non-fatal
+      });
+  }, []);
 
   function onAuthed(u: Me) {
     setMe(u);
@@ -26,7 +42,7 @@ export default function App() {
   return (
     <BrowserRouter>
       {me ? (
-        <Shell me={me} onLoggedOut={onLoggedOut}>
+        <Shell me={me} onLoggedOut={onLoggedOut} demoMode={demoMode}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
@@ -38,7 +54,10 @@ export default function App() {
         </Shell>
       ) : (
         <Routes>
-          <Route path="/login" element={<LoginPage onAuthed={onAuthed} />} />
+          <Route
+            path="/login"
+            element={<LoginPage onAuthed={onAuthed} demoMode={demoMode} demoEmail={demoEmail} />}
+          />
           <Route path="/register" element={<RegisterPage onAuthed={onAuthed} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
@@ -46,4 +65,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-
