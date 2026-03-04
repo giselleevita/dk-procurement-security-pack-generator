@@ -82,7 +82,7 @@ def test_smoke_register_collect_dashboard(monkeypatch):
 
     dash = client.get("/api/dashboard")
     assert dash.status_code == 200
-    assert len(dash.json()) == 12
+    assert len(dash.json()) == 18
 
 
 def test_settings_rejects_wildcard_allowed_origins(monkeypatch):
@@ -252,7 +252,7 @@ def test_collect_writes_complete_snapshot_even_on_provider_error(monkeypatch):
     assert res.status_code == 200
 
     dash = client.get("/api/dashboard").json()
-    assert len(dash) == 12
+    assert len(dash) == 18
 
     # GitHub controls should exist in this run even though provider call failed.
     detail = client.get("/api/controls/gh.branch_protection").json()

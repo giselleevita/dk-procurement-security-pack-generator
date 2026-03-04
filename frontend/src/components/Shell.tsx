@@ -31,6 +31,8 @@ export function Shell({
         <nav className="nav">
           <Link to="/">Dashboard</Link>
           <Link to="/connections">Connect</Link>
+          <Link to="/attestations">Attest</Link>
+          <Link to="/vendor-profile">Profile</Link>
           <button className="linkbtn" onClick={logout}>
             Logout
           </button>

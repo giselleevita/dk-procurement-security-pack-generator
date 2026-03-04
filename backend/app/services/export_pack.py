@@ -11,10 +11,12 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 from sqlalchemy.orm import Session
 
+from app.export.dpa_template import render_dpa_md
 from app.export.evidence_zip import build_evidence_zip
 from app.export.report_md import render_report_md
 from app.export.report_pdf import render_report_pdf
 from app.repos.evidence import add_control_evidence, latest_evidence_all_controls, latest_run
+from app.repos.vendor_profile import get_vendor_profile
 from app.services.control_defs import CONTROLS
 from app.services.export_store import store_export_pack
 from app.services.pack_signing import canonical_manifest_bytes, ensure_signing_material
@@ -26,10 +28,28 @@ def export_pack(db: Session, *, user_id) -> bytes:
         raise ValueError("No evidence collected yet")
 
     generated_at = utcnow()
-    app_version = "0.1.0"
+    app_version = "0.2.0"
     export_id = uuid.uuid4().hex
 
     signing = ensure_signing_material()
+
+    # Load vendor profile (optional – pack is valid without it).
+    vp = get_vendor_profile(db, user_id=user_id)
+    vendor: dict = {}
+    if vp is not None:
+        vendor = {
+            "company_name": vp.company_name,
+            "cvr_number": vp.cvr_number,
+            "address": vp.address,
+            "contact_name": vp.contact_name,
+            "contact_email": vp.contact_email,
+            "contact_phone": vp.contact_phone,
+            "security_officer_name": vp.security_officer_name,
+            "security_officer_title": vp.security_officer_title,
+            "pack_scope": vp.pack_scope,
+            "pack_recipient": vp.pack_recipient,
+            "pack_validity_months": vp.pack_validity_months,
+        }
 
     rows = {r.control_key: r for r in latest_evidence_all_controls(db, user_id=user_id)}
     evidence_by_key: dict[str, dict] = {}
@@ -46,8 +66,19 @@ def export_pack(db: Session, *, user_id) -> bytes:
             "artifacts": r.artifacts,
         }
 
-    report_md = render_report_md(generated_at=generated_at, app_version=app_version, evidence_by_key=evidence_by_key).encode("utf-8")
-    report_pdf = render_report_pdf(generated_at=generated_at, app_version=app_version, evidence_by_key=evidence_by_key)
+    report_md = render_report_md(
+        generated_at=generated_at,
+        app_version=app_version,
+        evidence_by_key=evidence_by_key,
+        vendor=vendor,
+    ).encode("utf-8")
+    report_pdf = render_report_pdf(
+        generated_at=generated_at,
+        app_version=app_version,
+        evidence_by_key=evidence_by_key,
+        vendor=vendor,
+    )
+    dpa_md = render_dpa_md(generated_at=generated_at, vendor=vendor).encode("utf-8")
 
     evidence_zip_bytes, _manifest = build_evidence_zip(
         generated_at=generated_at,
@@ -60,6 +91,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
     pack_hashes = {
         "report.md": hashlib.sha256(report_md).hexdigest(),
         "report.pdf": hashlib.sha256(report_pdf).hexdigest(),
+        "dpa-template.md": hashlib.sha256(dpa_md).hexdigest(),
         "evidence-pack.zip": hashlib.sha256(evidence_zip_bytes).hexdigest(),
     }
     pack_manifest = {
@@ -92,6 +124,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
     with ZipFile(outer, "w", compression=ZIP_DEFLATED) as z:
         z.writestr("report.md", report_md)
         z.writestr("report.pdf", report_pdf)
+        z.writestr("dpa-template.md", dpa_md)
         z.writestr("evidence-pack.zip", evidence_zip_bytes)
         z.writestr("pack_manifest.json", pack_manifest_bytes)
         z.writestr("pack_manifest.sig", pack_sig_text.encode("utf-8"))

@@ -6,6 +6,8 @@ import { RegisterPage } from "./pages/Register";
 import { DashboardPage } from "./pages/Dashboard";
 import { ConnectionsPage } from "./pages/Connections";
 import { ControlDetailPage } from "./pages/ControlDetail";
+import { VendorProfilePage } from "./pages/VendorProfile";
+import { AttestationsPage } from "./pages/Attestations";
 import { Shell } from "./components/Shell";
 
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
             <Route path="/controls/:key" element={<ControlDetailPage />} />
+            <Route path="/vendor-profile" element={<VendorProfilePage />} />
+            <Route path="/attestations" element={<AttestationsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Shell>

@@ -35,7 +35,7 @@ def test_demo_seed_writes_complete_snapshot(monkeypatch):
         write_demo_snapshot(db, user_id=user_id)
         rows = latest_evidence_all_controls(db, user_id=user_id)
 
-    assert len(rows) == 12
+    assert len(rows) == 18
     assert set(r.control_key for r in rows) == {
         "ms.security_defaults",
         "ms.conditional_access_presence",
@@ -49,4 +49,10 @@ def test_demo_seed_writes_complete_snapshot(monkeypatch):
         "pack.documentation_completeness",
         "pack.export_integrity",
         "pack.connection_status",
+        "att.incident_response",
+        "att.backup_and_recovery",
+        "att.encryption_at_rest_in_transit",
+        "att.endpoint_management",
+        "att.vulnerability_management",
+        "att.gdpr_dpa",
     }

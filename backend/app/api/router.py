@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes.auth import router as auth_router
+from app.api.routes.attestations import router as attestations_router
 from app.api.routes.connections import router as connections_router
 from app.api.routes.controls import router as controls_router
 from app.api.routes.collect import router as collect_router
@@ -9,6 +10,7 @@ from app.api.routes.exports import router as exports_router
 from app.api.routes.health import router as health_router
 from app.api.routes.me import router as me_router
 from app.api.routes.oauth import router as oauth_router
+from app.api.routes.vendor_profile import router as vendor_profile_router
 from app.api.routes.wipe import router as wipe_router
 
 router = APIRouter()
@@ -22,4 +24,6 @@ router.include_router(collect_router)
 router.include_router(controls_router)
 router.include_router(export_router)
 router.include_router(exports_router)
+router.include_router(vendor_profile_router)
+router.include_router(attestations_router)
 router.include_router(wipe_router)

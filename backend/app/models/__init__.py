@@ -4,6 +4,8 @@ from app.models.audit_event import AuditEvent
 from app.models.provider_connection import ProviderConnection
 from app.models.session import Session
 from app.models.user import User
+from app.models.vendor_profile import VendorProfile
+from app.models.attestation import Attestation
 
 __all__ = [
     "User",
@@ -13,4 +15,6 @@ __all__ = [
     "OAuthState",
     "EvidenceRun",
     "ControlEvidence",
+    "VendorProfile",
+    "Attestation",
 ]
