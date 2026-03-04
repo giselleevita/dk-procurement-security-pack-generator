@@ -2,13 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { ControlDetail } from "../api/types";
-
-function statusClass(s: string) {
-  if (s === "pass") return "pill pass";
-  if (s === "warn") return "pill warn";
-  if (s === "fail") return "pill fail";
-  return "pill unknown";
-}
+import { StatusBadge } from "../components/StatusBadge";
+import { ProviderIcon, PROVIDER_LABELS } from "../components/ProviderIcon";
+import { ArtifactView } from "../components/ArtifactView";
+import { relTime } from "../utils/time";
 
 export function ControlDetailPage() {
   const params = useParams();
@@ -38,79 +35,105 @@ export function ControlDetailPage() {
 
   return (
     <div className="stack">
-      <div className="card">
-        <div className="rowHead">
-          <div>
-            <h1>Control</h1>
-            <div className="muted">{key}</div>
-          </div>
-          <div>
-            {row ? <span className={statusClass(row.status)}>{row.status}</span> : null}
-          </div>
-        </div>
-        <div className="muted">
-          <Link to="/">← Back to dashboard</Link>
-        </div>
+      <div className="detail-back">
+        <Link to="/" className="muted">
+          ← Dashboard
+        </Link>
       </div>
 
       {err ? <div className="error">{err}</div> : null}
 
+      {!row && !err ? (
+        <section className="card">
+          <div className="skeleton-rows">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-row" />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {row ? (
         <>
-          <section className="card">
-            <h2>{row.title_en}</h2>
-            <div className="muted" style={{ marginBottom: 4 }}>{row.title_dk}</div>
-            {row.description_en && <p>{row.description_en}</p>}
-            <div className="muted">Collected at: {row.collected_at ? row.collected_at : "—"}</div>
+          {/* ── Header ─────────────────────────────── */}
+          <section className="card detail-header">
+            <div className="detail-header__top">
+              <div className="detail-header__provider">
+                <ProviderIcon provider={row.provider} size={15} />
+                <span className="muted">{PROVIDER_LABELS[row.provider] ?? row.provider}</span>
+                <code className="detail-header__key muted">{row.key}</code>
+              </div>
+              <StatusBadge status={row.status} large />
+            </div>
+            <h1 className="detail-header__title">{row.title_en}</h1>
+            <p className="muted detail-header__title-dk">{row.title_dk}</p>
+            {row.description_en && <p className="detail-header__desc">{row.description_en}</p>}
+            {row.collected_at && (
+              <div className="muted detail-header__collected">
+                Last collected: <strong>{relTime(row.collected_at)}</strong>
+              </div>
+            )}
           </section>
 
-          {/* Framework mapping */}
+          {/* ── Compliance mapping ─────────────────── */}
           {(row.iso27001_clauses.length > 0 || row.nis2_articles.length > 0) && (
             <section className="card">
-              <h2>Compliance framework mapping</h2>
-              {row.iso27001_clauses.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  <strong>ISO 27001:2022</strong>{" "}
-                  <span className="muted">{row.iso27001_clauses.join(", ")}</span>
-                </div>
-              )}
-              {row.nis2_articles.length > 0 && (
-                <div>
-                  <strong>NIS2 Directive</strong>{" "}
-                  <span className="muted">{row.nis2_articles.join(", ")}</span>
-                </div>
-              )}
+              <h2 className="section-title">📋 Compliance framework mapping</h2>
+              <div className="framework-grid">
+                {row.iso27001_clauses.length > 0 && (
+                  <div className="framework-group">
+                    <div className="framework-group__label muted">ISO 27001:2022</div>
+                    <div className="framework-chips">
+                      {row.iso27001_clauses.map((c) => (
+                        <span key={c} className="framework-chip framework-chip--iso">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {row.nis2_articles.length > 0 && (
+                  <div className="framework-group">
+                    <div className="framework-group__label muted">NIS2 Directive</div>
+                    <div className="framework-chips">
+                      {row.nis2_articles.map((a) => (
+                        <span key={a} className="framework-chip framework-chip--nis2">
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
-          {/* Notes */}
-          <section className="card">
-            <h2>Evidence notes</h2>
-            <pre className="pre">{row.notes}</pre>
-          </section>
-
-          {/* Remediation */}
-          {(row.remediation_en || row.remediation_dk) && row.status !== "pass" && (
-            <section className="card">
-              <h2>How to fix</h2>
-              {row.remediation_en && <p>{row.remediation_en}</p>}
+          {/* ── Remediation ────────────────────────── */}
+          {row.status !== "pass" && (row.remediation_en || row.remediation_dk) && (
+            <section className="card card--remediation">
+              <h2 className="section-title">🔧 How to fix this</h2>
+              {row.remediation_en && <p className="remediation-text">{row.remediation_en}</p>}
               {row.remediation_dk && (
-                <p className="muted" style={{ fontSize: "0.9em" }}>
-                  {row.remediation_dk}
-                </p>
+                <p className="muted remediation-dk">{row.remediation_dk}</p>
               )}
             </section>
           )}
 
-          {/* Raw artifacts */}
+          {/* ── Evidence notes ─────────────────────── */}
+          {row.notes && (
+            <section className="card">
+              <h2 className="section-title">📝 Evidence notes</h2>
+              <pre className="pre">{row.notes}</pre>
+            </section>
+          )}
+
+          {/* ── Collected data ─────────────────────── */}
           <section className="card">
-            <h2>Artifacts (JSON)</h2>
-            <pre className="pre">{JSON.stringify(row.artifacts, null, 2)}</pre>
+            <h2 className="section-title">🔍 Collected data</h2>
+            <ArtifactView artifacts={row.artifacts as Record<string, unknown>} />
           </section>
         </>
-      ) : (
-        <div className="muted">Loading...</div>
-      )}
+      ) : null}
     </div>
   );
 }

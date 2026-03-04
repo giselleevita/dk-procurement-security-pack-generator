@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useMe } from "./hooks/useMe";
 import { api } from "./api/client";
 import type { Me, Health } from "./api/types";
+import { ToastProvider } from "./context/ToastContext";
 import { LoginPage } from "./pages/Login";
 import { RegisterPage } from "./pages/Register";
 import { DashboardPage } from "./pages/Dashboard";
@@ -24,9 +25,7 @@ export default function App() {
         setDemoMode(h.demo_mode);
         setDemoEmail(h.demo_email);
       })
-      .catch(() => {
-        // health check failure is non-fatal
-      });
+      .catch(() => {});
   }, []);
 
   function onAuthed(u: Me) {
@@ -37,31 +36,35 @@ export default function App() {
     setMe(null);
   }
 
-  if (loading) return <div className="boot">Loading...</div>;
+  if (loading) return <div className="boot">Loading…</div>;
 
   return (
-    <BrowserRouter>
-      {me ? (
-        <Shell me={me} onLoggedOut={onLoggedOut} demoMode={demoMode}>
+    <ToastProvider>
+      <BrowserRouter>
+        {me ? (
+          <Shell me={me} onLoggedOut={onLoggedOut} demoMode={demoMode}>
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/connections" element={<ConnectionsPage />} />
+              <Route path="/controls/:key" element={<ControlDetailPage />} />
+              <Route path="/vendor-profile" element={<VendorProfilePage />} />
+              <Route path="/attestations" element={<AttestationsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Shell>
+        ) : (
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/connections" element={<ConnectionsPage />} />
-            <Route path="/controls/:key" element={<ControlDetailPage />} />
-            <Route path="/vendor-profile" element={<VendorProfilePage />} />
-            <Route path="/attestations" element={<AttestationsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route
+              path="/login"
+              element={
+                <LoginPage onAuthed={onAuthed} demoMode={demoMode} demoEmail={demoEmail} />
+              }
+            />
+            <Route path="/register" element={<RegisterPage onAuthed={onAuthed} />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-        </Shell>
-      ) : (
-        <Routes>
-          <Route
-            path="/login"
-            element={<LoginPage onAuthed={onAuthed} demoMode={demoMode} demoEmail={demoEmail} />}
-          />
-          <Route path="/register" element={<RegisterPage onAuthed={onAuthed} />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      )}
-    </BrowserRouter>
+        )}
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

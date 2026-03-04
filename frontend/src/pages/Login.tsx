@@ -51,8 +51,22 @@ export function LoginPage({
 
   return (
     <div className="auth">
-      <h1>DK Security Pack</h1>
-      <p className="muted">Local-only procurement security documentation pack generator.</p>
+      {/* ── Value proposition ──────────────────────── */}
+      <div className="auth__hero">
+        <h1>DK Security Pack</h1>
+        <p className="auth__tagline">
+          Generate a GDPR-ready procurement security pack in minutes. 18 automated controls,
+          ISO 27001 & NIS2 mapped, PDF + DPA template included.
+        </p>
+        <div className="auth__features">
+          <span className="auth__feat">✓ Local-only, no telemetry</span>
+          <span className="auth__feat">✓ GitHub + Microsoft Entra</span>
+          <span className="auth__feat">✓ PDF + DPA export</span>
+          <span className="auth__feat">✓ Self-hosted</span>
+        </div>
+      </div>
+
+      {/* ── Demo callout ───────────────────────────── */}
       {demoMode && (
         <div className="demo-callout card">
           <p className="demo-callout__title">🎬 Demo mode</p>
@@ -65,16 +79,24 @@ export function LoginPage({
             </p>
           )}
           <button className="btn-demo" onClick={demoLogin} disabled={busy} type="button">
-            {busy ? "Signing in..." : "Try demo — one click"}
+            {busy ? "Signing in…" : "Try demo — one click"}
           </button>
           <div className="demo-callout__divider">or sign in manually below</div>
         </div>
       )}
+
+      {/* ── Login form ─────────────────────────────── */}
       <form onSubmit={submit} className="card">
-        <h2>Login</h2>
+        <h2>Sign in</h2>
         <label>
           Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" required />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            autoComplete="email"
+            required
+          />
         </label>
         <label>
           Password
@@ -88,7 +110,7 @@ export function LoginPage({
         </label>
         {err ? <div className="error">{err}</div> : null}
         <button disabled={busy} type="submit">
-          {busy ? "Signing in..." : "Sign in"}
+          {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="muted">
           No account? <Link to="/register">Create one</Link>
