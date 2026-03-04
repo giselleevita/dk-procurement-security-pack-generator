@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.settings import get_settings
 from app.providers.github_api import GitHubApi, GitHubApiError
 from app.providers.graph_api import GraphApi, GraphApiError
+from app.repos.attestations import list_attestations
 from app.repos.connections import get_connection
 from app.repos.evidence import add_control_evidence, create_run, finish_run
 from app.services.control_defs import CONTROLS
@@ -40,7 +41,7 @@ def collect_now(db: Session, *, user_id) -> dict:
 
     errors: list[str] = []
 
-    # Always write a complete 12-control snapshot per run (no mixing across runs).
+    # Always write a complete snapshot per run (no mixing across runs).
     try:
         _collect_github(db, user_id=user_id, run_id=run.id)
     except Exception as e:
@@ -71,6 +72,9 @@ def collect_now(db: Session, *, user_id) -> dict:
             only_missing=True,
         )
 
+    # Snapshot manual attestations into the run (read-only, no remote calls).
+    _collect_attestations(db, user_id=user_id, run_id=run.id)
+
     # Pack hygiene controls computed from what we just stored.
     _collect_pack_hygiene(db, user_id=user_id, run_id=run.id)
 
@@ -83,7 +87,7 @@ def collect_now(db: Session, *, user_id) -> dict:
 
 
 def write_demo_snapshot(db: Session, *, user_id, run_id=None) -> dict:
-    """Write a deterministic 12-control demo snapshot.
+    """Write a deterministic demo snapshot covering all controls.
 
     This is synthetic evidence intended for offline demos. No external calls.
     """
@@ -177,6 +181,9 @@ def write_demo_snapshot(db: Session, *, user_id, run_id=None) -> dict:
         artifacts={"demo": True, "repos_sampled": 5, "public_repos": 1, "private_repos": 4},
         notes=demo_note,
     )
+
+    # Snapshot manual attestations.
+    _collect_attestations(db, user_id=user_id, run_id=run_id)
 
     # Pack hygiene controls computed from what we just stored.
     _collect_pack_hygiene(db, user_id=user_id, run_id=run_id)
@@ -466,6 +473,37 @@ def _collect_microsoft(db: Session, *, user_id, run_id) -> None:
             artifacts={"error": {"status_code": e.status_code, "message": str(e)}, **artifacts},
             notes="Unable to read directory roles via Graph with current permissions.",
         )
+
+
+def _collect_attestations(db: Session, *, user_id, run_id) -> None:
+    """Snapshot stored attestations into this evidence run (no remote calls)."""
+    att_rows = {a.control_key: a for a in list_attestations(db, user_id=user_id)}
+    att_controls = [c for c in CONTROLS if c.is_attestation]
+    for c in att_controls:
+        att = att_rows.get(c.key)
+        if att is None:
+            add_control_evidence(
+                db,
+                user_id=user_id,
+                run_id=run_id,
+                control_key=c.key,
+                provider="attestation",
+                status="unknown",
+                artifacts={},
+                notes="Ikke attesteret endnu. Gå til siden Attestationer for at udfylde.",
+            )
+        else:
+            add_control_evidence(
+                db,
+                user_id=user_id,
+                run_id=run_id,
+                control_key=c.key,
+                provider="attestation",
+                status=att.status,
+                artifacts={"attested_by": att.attested_by, "attested_at": att.attested_at.isoformat() + "Z"},
+                notes=att.notes,
+                collected_at=att.attested_at,
+            )
 
 
 def _collect_pack_hygiene(db: Session, *, user_id, run_id) -> None:

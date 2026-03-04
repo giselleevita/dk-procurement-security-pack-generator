@@ -19,6 +19,9 @@ class ControlSummary(BaseModel):
     provider: str
     title_dk: str
     title_en: str
+    description_dk: str
+    description_en: str
+    is_attestation: bool
     status: str
     collected_at: datetime | None = None
 
@@ -28,30 +31,37 @@ class ControlDetail(BaseModel):
     provider: str
     title_dk: str
     title_en: str
+    description_dk: str
+    description_en: str
+    iso27001_clauses: list[str]
+    nis2_articles: list[str]
+    remediation_dk: str
+    remediation_en: str
+    is_attestation: bool
     status: str
     collected_at: datetime | None = None
     artifacts: dict
     notes: str
 
 
+def _summary(c, row) -> ControlSummary:
+    return ControlSummary(
+        key=c.key,
+        provider=c.provider,
+        title_dk=c.title_dk,
+        title_en=c.title_en,
+        description_dk=c.description_dk,
+        description_en=c.description_en,
+        is_attestation=c.is_attestation,
+        status=row.status if row else "unknown",
+        collected_at=row.collected_at if row else None,
+    )
+
+
 @router.get("/dashboard", response_model=list[ControlSummary])
 def dashboard(db: Session = Depends(get_db), auth: AuthContext = Depends(get_auth_ctx)) -> list[ControlSummary]:
     latest = {r.control_key: r for r in latest_evidence_all_controls(db, user_id=auth.user.id)}
-
-    out: list[ControlSummary] = []
-    for c in CONTROLS:
-        row = latest.get(c.key)
-        out.append(
-            ControlSummary(
-                key=c.key,
-                provider=c.provider,
-                title_dk=c.title_dk,
-                title_en=c.title_en,
-                status=row.status if row else "unknown",
-                collected_at=row.collected_at if row else None,
-            )
-        )
-    return out
+    return [_summary(c, latest.get(c.key)) for c in CONTROLS]
 
 
 @router.get("/controls", response_model=list[ControlSummary])
@@ -66,26 +76,22 @@ def control_detail(control_key: str, db: Session = Depends(get_db), auth: AuthCo
 
     c = CONTROL_BY_KEY[control_key]
     row = latest_evidence_for_control(db, user_id=auth.user.id, control_key=control_key)
-    if row is None:
-        return ControlDetail(
-            key=c.key,
-            provider=c.provider,
-            title_dk=c.title_dk,
-            title_en=c.title_en,
-            status="unknown",
-            collected_at=None,
-            artifacts={},
-            notes="No evidence collected yet.",
-        )
 
-    return ControlDetail(
+    base = dict(
         key=c.key,
         provider=c.provider,
         title_dk=c.title_dk,
         title_en=c.title_en,
-        status=row.status,
-        collected_at=row.collected_at,
-        artifacts=row.artifacts,
-        notes=row.notes,
+        description_dk=c.description_dk,
+        description_en=c.description_en,
+        iso27001_clauses=list(c.iso27001_clauses),
+        nis2_articles=list(c.nis2_articles),
+        remediation_dk=c.remediation_dk,
+        remediation_en=c.remediation_en,
+        is_attestation=c.is_attestation,
     )
 
+    if row is None:
+        return ControlDetail(**base, status="unknown", collected_at=None, artifacts={}, notes="No evidence collected yet.")
+
+    return ControlDetail(**base, status=row.status, collected_at=row.collected_at, artifacts=row.artifacts, notes=row.notes)

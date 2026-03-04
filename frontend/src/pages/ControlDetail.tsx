@@ -49,7 +49,7 @@ export function ControlDetailPage() {
           </div>
         </div>
         <div className="muted">
-          <Link to="/">Back to dashboard</Link>
+          <Link to="/">← Back to dashboard</Link>
         </div>
       </div>
 
@@ -58,16 +58,51 @@ export function ControlDetailPage() {
       {row ? (
         <>
           <section className="card">
-            <h2>{row.title_dk}</h2>
-            <div className="muted">{row.title_en}</div>
-            <div className="muted">Collected at: {row.collected_at ? row.collected_at : "-"}</div>
+            <h2>{row.title_en}</h2>
+            <div className="muted" style={{ marginBottom: 4 }}>{row.title_dk}</div>
+            {row.description_en && <p>{row.description_en}</p>}
+            <div className="muted">Collected at: {row.collected_at ? row.collected_at : "—"}</div>
           </section>
 
+          {/* Framework mapping */}
+          {(row.iso27001_clauses.length > 0 || row.nis2_articles.length > 0) && (
+            <section className="card">
+              <h2>Compliance framework mapping</h2>
+              {row.iso27001_clauses.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <strong>ISO 27001:2022</strong>{" "}
+                  <span className="muted">{row.iso27001_clauses.join(", ")}</span>
+                </div>
+              )}
+              {row.nis2_articles.length > 0 && (
+                <div>
+                  <strong>NIS2 Directive</strong>{" "}
+                  <span className="muted">{row.nis2_articles.join(", ")}</span>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Notes */}
           <section className="card">
-            <h2>Notes</h2>
+            <h2>Evidence notes</h2>
             <pre className="pre">{row.notes}</pre>
           </section>
 
+          {/* Remediation */}
+          {(row.remediation_en || row.remediation_dk) && row.status !== "pass" && (
+            <section className="card">
+              <h2>How to fix</h2>
+              {row.remediation_en && <p>{row.remediation_en}</p>}
+              {row.remediation_dk && (
+                <p className="muted" style={{ fontSize: "0.9em" }}>
+                  {row.remediation_dk}
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* Raw artifacts */}
           <section className="card">
             <h2>Artifacts (JSON)</h2>
             <pre className="pre">{JSON.stringify(row.artifacts, null, 2)}</pre>
