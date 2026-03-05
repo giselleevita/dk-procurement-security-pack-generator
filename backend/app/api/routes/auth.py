@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from app.core.time import utcnow
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.cookies import (
@@ -30,10 +31,26 @@ from app.api.deps import AuthContext, get_auth_ctx, require_csrf
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Password complexity patterns.
+_PW_UPPERCASE = re.compile(r"[A-Z]")
+_PW_DIGIT = re.compile(r"\d")
+
 
 class AuthRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def password_complexity(cls, v: str) -> str:
+        errors: list[str] = []
+        if not _PW_UPPERCASE.search(v):
+            errors.append("at least one uppercase letter")
+        if not _PW_DIGIT.search(v):
+            errors.append("at least one digit")
+        if errors:
+            raise ValueError("Password must contain " + " and ".join(errors))
+        return v
 
 
 class MeResponse(BaseModel):
@@ -56,7 +73,11 @@ def _set_login_cookies(resp: Response, *, session_token: str, csrf_token: str, m
 
 
 @router.post("/register", response_model=MeResponse)
-def register(payload: AuthRequest, response: Response, db: Session = Depends(get_db)) -> MeResponse:
+def register(
+    payload: AuthRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> MeResponse:
     existing = get_user_by_email(db, payload.email)
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -78,7 +99,11 @@ def register(payload: AuthRequest, response: Response, db: Session = Depends(get
 
 
 @router.post("/login", response_model=MeResponse)
-def login(payload: AuthRequest, response: Response, db: Session = Depends(get_db)) -> MeResponse:
+def login(
+    payload: AuthRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> MeResponse:
     user = get_user_by_email(db, payload.email)
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -117,7 +142,10 @@ def me(auth: AuthContext = Depends(get_auth_ctx)) -> MeResponse:
 
 
 @router.post("/demo-login", response_model=MeResponse)
-def demo_login(response: Response, db: Session = Depends(get_db)) -> MeResponse:
+def demo_login(
+    response: Response,
+    db: Session = Depends(get_db),
+) -> MeResponse:
     """One-click login for demo mode. Only active when APP_ENV=demo."""
     settings = get_settings()
     if settings.app_env != "demo":

@@ -15,13 +15,15 @@ from app.models.user import User
 from app.repos.sessions import get_session_by_token_hash, touch_session
 from app.repos.users import get_user_by_id
 
+# Only write last_seen_at if the previous write was older than this threshold.
+# Prevents a DB write on every single authenticated request.
+_TOUCH_THROTTLE_SECONDS = 300  # 5 minutes
+
 
 @dataclass(frozen=True)
 class AuthContext:
     user: User
     session: DbSession
-
-
 
 
 def _as_aware_utc(dt: datetime) -> datetime:
@@ -52,7 +54,13 @@ def get_auth_ctx(request: Request, db: Session = Depends(get_db)) -> AuthContext
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session user")
 
-    touch_session(db, sess.id)
+    # Throttle: only update last_seen_at when the previous touch is stale enough.
+    # This cuts DB writes from "every request" to ~once per 5 minutes per session.
+    now = _utcnow()
+    last_seen = _as_aware_utc(sess.last_seen_at) if sess.last_seen_at else None
+    if last_seen is None or (now - last_seen).total_seconds() > _TOUCH_THROTTLE_SECONDS:
+        touch_session(db, sess.id)
+
     return AuthContext(user=user, session=sess)
 
 

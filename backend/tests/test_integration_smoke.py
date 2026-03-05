@@ -46,7 +46,7 @@ def test_smoke_register_collect_dashboard(monkeypatch):
 
     client = TestClient(app)
 
-    r = client.post("/api/auth/register", json={"email": "a@example.com", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "a@example.com", "password": "Password123"})
     assert r.status_code == 200
     set_cookie = (r.headers.get("set-cookie") or "").lower()
     assert "dkpack_session=" in set_cookie
@@ -136,7 +136,7 @@ def test_oauth_denial_redirect_is_user_readable(monkeypatch):
 
     client = TestClient(app, base_url="http://testserver")
 
-    r = client.post("/api/auth/register", json={"email": "b@example.com", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "b@example.com", "password": "Password123"})
     assert r.status_code == 200
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
@@ -210,7 +210,7 @@ def test_collect_writes_complete_snapshot_even_on_provider_error(monkeypatch):
     monkeypatch.setattr(github_api.GitHubApi, "list_repos", boom)
 
     client = TestClient(app)
-    r = client.post("/api/auth/register", json={"email": "c@example.com", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "c@example.com", "password": "Password123"})
     assert r.status_code == 200
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
@@ -292,7 +292,7 @@ def test_forget_provider_deletes_tokens_and_provider_evidence(monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
 
     client = TestClient(app)
-    r = client.post("/api/auth/register", json={"email": "d@example.com", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "d@example.com", "password": "Password123"})
     assert r.status_code == 200
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
@@ -378,7 +378,7 @@ def test_wipe_deletes_all_user_data_and_logs_out(monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
 
     client = TestClient(app)
-    r = client.post("/api/auth/register", json={"email": "e@example.com", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "e@example.com", "password": "Password123"})
     assert r.status_code == 200
     csrf = client.cookies.get("dkpack_csrf")
     assert csrf
@@ -447,7 +447,7 @@ def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
     Base.metadata.create_all(bind=engine)
 
     client = TestClient(app)
-    r = client.post("/api/auth/register", json={"email": "xpack@example.com", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "xpack@example.com", "password": "Password123"})
     assert r.status_code == 200
 
     csrf = client.cookies.get("dkpack_csrf")

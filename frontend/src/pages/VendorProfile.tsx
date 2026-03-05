@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import type { VendorProfile } from "../api/types";
+import { useToast } from "../context/ToastContext";
 
 const EMPTY: VendorProfile = {
   company_name: "",
@@ -17,22 +18,40 @@ const EMPTY: VendorProfile = {
 };
 
 export function VendorProfilePage() {
+  const toast = useToast();
   const [form, setForm] = useState<VendorProfile>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  // Track server-committed form so we can detect unsaved changes.
+  const committedRef = useRef<VendorProfile>(EMPTY);
 
   useEffect(() => {
     api
       .get<VendorProfile>("/api/vendor-profile")
-      .then((v) => setForm(v))
+      .then((v) => {
+        setForm(v);
+        committedRef.current = v;
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
+  // Warn the user if they try to navigate away with unsaved changes.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
   function set(field: keyof VendorProfile, value: string | number) {
-    setSaved(false);
+    setDirty(true);
     setForm((f) => ({ ...f, [field]: value }));
   }
 
@@ -40,19 +59,22 @@ export function VendorProfilePage() {
     e.preventDefault();
     setSaving(true);
     setErr(null);
-    setSaved(false);
     try {
       const updated = await api.put<VendorProfile>("/api/vendor-profile", form);
       setForm(updated);
-      setSaved(true);
+      committedRef.current = updated;
+      setDirty(false);
+      toast.success("Profile saved");
     } catch (e) {
-      setErr(e instanceof ApiError ? JSON.stringify(e.detail) : "Save failed");
+      const msg = e instanceof ApiError ? JSON.stringify(e.detail) : "Save failed";
+      setErr(msg);
+      toast.error("Could not save profile");
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div className="muted">Loading...</div>;
+  if (loading) return <div className="muted">Loading…</div>;
 
   return (
     <div className="stack">
@@ -65,7 +87,12 @@ export function VendorProfilePage() {
       </section>
 
       {err && <div className="error">{err}</div>}
-      {saved && <div className="success">Saved.</div>}
+
+      {dirty && (
+        <div className="unsaved-banner">
+          ● Unsaved changes — remember to save before exporting.
+        </div>
+      )}
 
       <form className="card stack" onSubmit={save}>
         <fieldset>
@@ -134,7 +161,7 @@ export function VendorProfilePage() {
           <label>
             Phone
             <input
-              type="text"
+              type="tel"
               value={form.contact_phone}
               maxLength={50}
               onChange={(e) => set("contact_phone", e.target.value)}
@@ -211,7 +238,7 @@ export function VendorProfilePage() {
 
         <div className="actions">
           <button type="submit" disabled={saving}>
-            {saving ? "Saving..." : "Save profile"}
+            {saving ? "Saving…" : dirty ? "Save changes" : "Save profile"}
           </button>
         </div>
       </form>

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from email_validator import EmailNotValidError
+from email_validator import validate_email as _validate_email
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import AuthContext, get_auth_ctx, require_csrf
@@ -33,13 +35,27 @@ class VendorProfileUpdate(BaseModel):
     cvr_number: str = Field(default="", max_length=8, pattern=r"^\d{0,8}$")
     address: str = Field(default="", max_length=500)
     contact_name: str = Field(default="", max_length=255)
+    # Allow empty string or a valid e-mail address.
     contact_email: str = Field(default="", max_length=320)
-    contact_phone: str = Field(default="", max_length=50)
+    # International phone numbers: digits, spaces, +, -, (, ), .
+    contact_phone: str = Field(default="", max_length=50, pattern=r"^[\+\d\s\-\(\)\.]{0,50}$")
     security_officer_name: str = Field(default="", max_length=255)
     security_officer_title: str = Field(default="", max_length=255)
     pack_scope: str = Field(default="", max_length=1000)
     pack_recipient: str = Field(default="", max_length=500)
     pack_validity_months: int = Field(default=6, ge=1, le=60)
+
+    @field_validator("contact_email")
+    @classmethod
+    def validate_contact_email(cls, v: str) -> str:
+        """Accept empty string (field not filled) or a syntactically valid e-mail."""
+        if not v:
+            return v
+        try:
+            info = _validate_email(v, check_deliverability=False)
+            return info.normalized
+        except EmailNotValidError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 def _to_response(vp) -> VendorProfileResponse:
