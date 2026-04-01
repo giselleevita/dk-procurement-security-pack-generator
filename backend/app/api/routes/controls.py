@@ -7,13 +7,12 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import AuthContext, get_auth_ctx
+from app.core.settings import get_settings
 from app.db.session import get_db
 from app.repos.evidence import latest_evidence_all_controls, latest_evidence_for_control
 from app.services.control_defs import CONTROL_BY_KEY, CONTROLS
 
 router = APIRouter(tags=["controls"])
-
-_AGING_DAYS = 30  # alert if evidence older than this many days
 
 
 class ControlSummary(BaseModel):
@@ -42,10 +41,26 @@ class ControlDetail(BaseModel):
     age_alert: bool = False
 
 
+class AgingAlertItem(BaseModel):
+    key: str
+    title_en: str
+    provider: str
+    age_days: int
+    threshold_days: int
+    status: str
+    collected_at: datetime
+
+
+def _aging_threshold_days() -> int:
+    threshold = int(get_settings().evidence_age_alert_days)
+    return threshold if threshold > 0 else 30
+
+
 @router.get("/dashboard", response_model=list[ControlSummary])
 def dashboard(db: Session = Depends(get_db), auth: AuthContext = Depends(get_auth_ctx)) -> list[ControlSummary]:
     latest = {r.control_key: r for r in latest_evidence_all_controls(db, user_id=auth.user.id)}
     now = datetime.now(timezone.utc)
+    aging_days = _aging_threshold_days()
 
     out: list[ControlSummary] = []
     for c in CONTROLS:
@@ -53,7 +68,7 @@ def dashboard(db: Session = Depends(get_db), auth: AuthContext = Depends(get_aut
         age_alert = False
         if row and row.collected_at:
             ts = row.collected_at if row.collected_at.tzinfo else row.collected_at.replace(tzinfo=timezone.utc)
-            age_alert = (now - ts).days > _AGING_DAYS
+            age_alert = (now - ts).days > aging_days
         out.append(
             ControlSummary(
                 key=c.key,
@@ -97,10 +112,11 @@ def control_detail(control_key: str, db: Session = Depends(get_db), auth: AuthCo
         )
 
     now = datetime.now(timezone.utc)
+    aging_days = _aging_threshold_days()
     age_alert = False
     if row.collected_at:
         ts = row.collected_at if row.collected_at.tzinfo else row.collected_at.replace(tzinfo=timezone.utc)
-        age_alert = (now - ts).days > _AGING_DAYS
+        age_alert = (now - ts).days > aging_days
 
     return ControlDetail(
         key=c.key,
@@ -115,4 +131,38 @@ def control_detail(control_key: str, db: Session = Depends(get_db), auth: AuthCo
         iso27001_refs=list(c.iso27001_refs),
         age_alert=age_alert,
     )
+
+
+@router.get("/controls/aging-alerts", response_model=list[AgingAlertItem])
+def list_aging_alerts(
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_ctx),
+) -> list[AgingAlertItem]:
+    latest = {r.control_key: r for r in latest_evidence_all_controls(db, user_id=auth.user.id)}
+    now = datetime.now(timezone.utc)
+    aging_days = _aging_threshold_days()
+
+    alerts: list[AgingAlertItem] = []
+    for c in CONTROLS:
+        row = latest.get(c.key)
+        if row is None or row.collected_at is None:
+            continue
+        ts = row.collected_at if row.collected_at.tzinfo else row.collected_at.replace(tzinfo=timezone.utc)
+        age_days = (now - ts).days
+        if age_days <= aging_days:
+            continue
+        alerts.append(
+            AgingAlertItem(
+                key=c.key,
+                title_en=c.title_en,
+                provider=c.provider,
+                age_days=age_days,
+                threshold_days=aging_days,
+                status=row.status,
+                collected_at=row.collected_at,
+            )
+        )
+
+    alerts.sort(key=lambda item: item.age_days, reverse=True)
+    return alerts
 

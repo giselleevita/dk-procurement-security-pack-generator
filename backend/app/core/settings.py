@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     allowed_hosts: str = ""
     support_sla_name: str = "best_effort"
     support_sla_response_hours: int = 48
+    evidence_age_alert_days: int = 30
 
     cookie_secure: bool = False
     rate_limit_max_requests: int = 120

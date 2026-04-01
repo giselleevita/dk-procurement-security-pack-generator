@@ -190,6 +190,56 @@ def test_framework_gap_report_endpoint(monkeypatch):
     assert isinstance(payload["priority_gaps"], list)
 
 
+def test_controls_aging_alerts_endpoint(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+    monkeypatch.setenv("EVIDENCE_AGE_ALERT_DAYS", "0")
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+    r = client.post("/api/auth/register", json={"email": "age@example.com", "password": "password123"})
+    assert r.status_code == 200
+
+    csrf = client.cookies.get("dkpack_csrf")
+    assert csrf
+    c = client.post("/api/collect", headers={"X-CSRF-Token": csrf})
+    assert c.status_code == 200
+
+    alerts = client.get("/api/controls/aging-alerts")
+    assert alerts.status_code == 200
+    body = alerts.json()
+    assert isinstance(body, list)
+    assert len(body) > 0
+    assert {"key", "age_days", "threshold_days"}.issubset(set(body[0].keys()))
+
+
 def test_import_grc_dry_run_and_commit(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     monkeypatch.setenv("FERNET_KEY", _fernet_key())
