@@ -166,6 +166,10 @@ def test_export_pack_contains_expected_files_and_no_secret_markers(monkeypatch):
         assert "evidence-pack.zip" in names
         assert "pack_manifest.json" in names
         assert "pack_manifest.sig" in names
+        manifest = json.loads(outer.read("pack_manifest.json").decode("utf-8"))
+        assert manifest["runtime_sku"] in {"demo", "production"}
+        assert manifest["attestation"]["support_sla"]["name"]
+        assert int(manifest["attestation"]["support_sla"]["response_hours"]) >= 1
 
         evidence_zip_bytes = outer.read("evidence-pack.zip")
         outer_texts = [t for _name, t in _read_text_files_from_zip(outer)]

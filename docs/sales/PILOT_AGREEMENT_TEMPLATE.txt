@@ -1,0 +1,28 @@
+30-Day Pilot Agreement Template
+
+Scope
+- Product: DK Procurement Security Pack Generator
+- Pilot Duration: 30 calendar days
+- Framework Targets: DS 484 / NIS2 / ISO 27001
+- Success Criteria:
+  1) Connected evidence sources operational
+  2) Signed pack generated for target tender
+  3) Procurement review cycle time reduced
+
+Commercial Terms
+- Pilot fee: __________________
+- Conversion credit to annual contract: Yes/No
+
+Security and Data Handling
+- Self-hosted deployment in customer environment
+- Tokens encrypted at rest
+- Data deletion SLA after pilot close: ______ days
+
+Governance
+- Weekly checkpoint cadence
+- Customer owner: __________________
+- Vendor owner: __________________
+
+Signatures
+Customer: __________________ Date: ______
+Vendor: ____________________ Date: ______

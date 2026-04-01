@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from io import BytesIO
+from zipfile import ZipFile
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -28,5 +31,30 @@ def export(
         content=payload,
         media_type="application/zip",
         headers={"Content-Disposition": 'attachment; filename="dk-security-pack.zip"'},
+    )
+
+
+@router.post("/export/pdf")
+def export_pdf(
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_ctx),
+    _: None = Depends(require_csrf),
+) -> Response:
+    try:
+        payload = export_pack(db, user_id=auth.user.id)
+        add_audit_event(db, user_id=auth.user.id, action="export_pdf", metadata={"bytes": len(payload)})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    try:
+        with ZipFile(BytesIO(payload), "r") as z:
+            pdf_bytes = z.read("report.pdf")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to build PDF export") from e
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="dk-security-report.pdf"'},
     )
 

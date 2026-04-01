@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-dkpack}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dkpack}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -38,17 +38,19 @@ services:
   web:
     image: node:20-alpine
     working_dir: /web
-    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    command: sh -lc "[ -d node_modules ] || npm ci --no-audit --no-fund; npm run dev -- --host 0.0.0.0 --port 5173"
     ports:
       - "5173:5173"
     environment:
       VITE_API_BASE_URL: http://localhost:8000
     volumes:
       - ./frontend:/web
+      - web_node_modules:/web/node_modules
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
   pg_data:
+  web_node_modules:
 

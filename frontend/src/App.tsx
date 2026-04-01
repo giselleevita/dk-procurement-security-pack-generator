@@ -5,6 +5,8 @@ import { LoginPage } from "./pages/Login";
 import { RegisterPage } from "./pages/Register";
 import { DashboardPage } from "./pages/Dashboard";
 import { ConnectionsPage } from "./pages/Connections";
+import { ConnectPage } from "./pages/Connect";
+import { PackPreviewPage } from "./pages/PackPreview";
 import { ControlDetailPage } from "./pages/ControlDetail";
 import { Shell } from "./components/Shell";
 
@@ -27,7 +29,9 @@ export default function App() {
         <Shell me={me} onLoggedOut={onLoggedOut}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/connect" element={<ConnectPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
+            <Route path="/pack-preview" element={<PackPreviewPage />} />
             <Route path="/controls/:key" element={<ControlDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

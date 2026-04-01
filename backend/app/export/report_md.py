@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.services.control_defs import CONTROLS
+from app.services.framework_mappings import NIS2_ARTICLE_LABELS, ISO27001_CLAUSE_LABELS
 
 
 def render_report_md(*, generated_at: datetime, app_version: str, evidence_by_key: dict[str, dict]) -> str:
@@ -110,6 +111,17 @@ def render_report_md(*, generated_at: datetime, app_version: str, evidence_by_ke
         if notes:
             lines.append("\n")
             lines.append(notes.strip() + "\n")
+        lines.append("\n")
+        if c.nis2_refs:
+            nis2_labels = ", ".join(
+                NIS2_ARTICLE_LABELS.get(r, r) for r in c.nis2_refs
+            )
+            lines.append(f"- **NIS2:** {nis2_labels}\n")
+        if c.iso27001_refs:
+            iso_labels = ", ".join(
+                ISO27001_CLAUSE_LABELS.get(r, r) for r in c.iso27001_refs
+            )
+            lines.append(f"- **ISO 27001:** {iso_labels}\n")
         lines.append("\n")
 
     return "".join(lines)

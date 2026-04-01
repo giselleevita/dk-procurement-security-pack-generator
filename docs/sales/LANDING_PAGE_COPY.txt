@@ -1,0 +1,17 @@
+Headline: Produce Procurement-Ready Security Packs in Minutes
+Subheadline: Self-hosted evidence collection and signed reporting for DS 484, NIS2, and ISO-aligned procurement responses.
+
+Core Features
+- One-click M365 + GitHub evidence collection
+- Signed pack manifest for tamper evidence
+- Framework mapping and PDF export
+- Local-first deployment with no SaaS dependency
+
+Pricing
+- Team: EUR 1,200/month equivalent annual license
+- Department: EUR 9,500/year
+- Enterprise: Custom with private support
+
+CTA
+- Primary: Schedule technical demo
+- Secondary: Run a pilot on your current tender package

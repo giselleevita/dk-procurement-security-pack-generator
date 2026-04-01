@@ -30,7 +30,8 @@ export function Shell({
         </div>
         <nav className="nav">
           <Link to="/">Dashboard</Link>
-          <Link to="/connections">Connect</Link>
+          <Link to="/connect">Connect</Link>
+          <Link to="/pack-preview">Pack preview</Link>
           <button className="linkbtn" onClick={logout}>
             Logout
           </button>

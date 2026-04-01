@@ -8,16 +8,35 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_env: str = "dev"  # dev|demo
+    app_env: str = "dev"  # dev|demo|production
+    runtime_sku: str = "demo"  # demo|production
     app_base_url: str = "http://localhost:8000"
     web_base_url: str = "http://localhost:5173"
     exports_dir: str = "exports"
     allowed_origins: str = ""
     allowed_hosts: str = ""
+    support_sla_name: str = "best_effort"
+    support_sla_response_hours: int = 48
 
     cookie_secure: bool = False
+    rate_limit_max_requests: int = 120
+    rate_limit_window_seconds: int = 60
+
+    # Production mode: enforced when app_env == "production".
+    # In production mode startup will reject demo/placeholder Fernet keys.
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() == "production"
+
+    @property
+    def is_demo_sku(self) -> bool:
+        return self.runtime_sku.lower() == "demo"
 
     database_url: str
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout_sec: int = 30
+    db_pool_recycle_sec: int = 1800
     fernet_key: str
 
     github_client_id: str = ""

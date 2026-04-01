@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { CollectResponse, ControlSummary } from "../api/types";
+import type { ControlSummary } from "../api/types";
 import { ExportButton } from "../components/ExportButton";
 
 function statusClass(s: string) {
@@ -11,10 +11,9 @@ function statusClass(s: string) {
   return "pill unknown";
 }
 
-export function DashboardPage() {
+export function PackPreviewPage() {
   const [controls, setControls] = useState<ControlSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function load() {
@@ -24,7 +23,7 @@ export function DashboardPage() {
       const rows = await api.get<ControlSummary[]>("/api/dashboard");
       setControls(rows);
     } catch (e) {
-      setErr(e instanceof ApiError ? JSON.stringify(e.detail) : "Failed to load");
+      setErr(e instanceof ApiError ? JSON.stringify(e.detail) : "Failed to load dashboard controls");
     } finally {
       setLoading(false);
     }
@@ -40,34 +39,16 @@ export function DashboardPage() {
     return c;
   }, [controls]);
 
-  async function collectNow() {
-    setBusy(true);
-    setErr(null);
-    try {
-      await api.post<CollectResponse>("/api/collect");
-      await load();
-    } catch (e) {
-      setErr(e instanceof ApiError ? JSON.stringify(e.detail) : "Collect failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="stack">
       <section className="hero card">
         <div>
-          <h1>Dashboard</h1>
-          <p className="muted">
-            12 procurement-friendly controls. Deterministic, evidence-backed, local-only.
-          </p>
+          <h1>Security pack preview</h1>
+          <p className="muted">Review control outcomes before delivering evidence to procurement stakeholders.</p>
         </div>
         <div className="actions">
-          <button disabled={busy} onClick={collectNow}>
-            {busy ? "Working..." : "Collect now"}
-          </button>
-          <ExportButton format="zip" className="secondary" onError={setErr} />
-          <Link to="/pack-preview">Preview pack</Link>
+          <ExportButton format="pdf" className="secondary" onError={setErr} />
+          <ExportButton format="zip" onError={setErr} />
         </div>
         <div className="summary">
           <span className="pill pass">Pass {counts.pass}</span>
@@ -80,17 +61,16 @@ export function DashboardPage() {
       {err ? <div className="error">{err}</div> : null}
 
       <section className="card">
-        <div className="tableHead">
-          <div>Control</div>
-          <div>Status</div>
-          <div>Updated</div>
+        <div className="rowHead">
+          <h2 style={{ margin: 0 }}>Included controls</h2>
+          <Link to="/">Back to dashboard</Link>
         </div>
         {loading ? (
           <div className="muted">Loading...</div>
         ) : (
-          <div className="rows">
+          <div className="rows" style={{ marginTop: 12 }}>
             {controls.map((c) => (
-              <Link key={c.key} to={`/controls/${encodeURIComponent(c.key)}`} className="row">
+              <div key={c.key} className="row" style={{ cursor: "default" }}>
                 <div className="title">
                   <div className="dk">{c.title_dk}</div>
                   <div className="en muted">{c.title_en}</div>
@@ -98,8 +78,8 @@ export function DashboardPage() {
                 <div>
                   <span className={statusClass(c.status)}>{c.status}</span>
                 </div>
-                <div className="muted">{c.collected_at ? c.collected_at : "-"}</div>
-              </Link>
+                <div className="muted">{c.collected_at || "-"}</div>
+              </div>
             ))}
           </div>
         )}

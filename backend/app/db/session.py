@@ -12,7 +12,17 @@ from app.core.settings import get_settings
 @lru_cache
 def get_engine() -> Engine:
     settings = get_settings()
-    return create_engine(settings.database_url, pool_pre_ping=True)
+    engine_kwargs: dict[str, int | bool] = {"pool_pre_ping": True}
+    if not settings.database_url.startswith("sqlite"):
+        engine_kwargs.update(
+            {
+                "pool_size": settings.db_pool_size,
+                "max_overflow": settings.db_max_overflow,
+                "pool_timeout": settings.db_pool_timeout_sec,
+                "pool_recycle": settings.db_pool_recycle_sec,
+            }
+        )
+    return create_engine(settings.database_url, **engine_kwargs)
 
 
 @lru_cache

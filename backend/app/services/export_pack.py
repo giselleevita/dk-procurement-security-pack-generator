@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 
 from app.core.time import utcnow
+from app.core.settings import get_settings
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -21,6 +22,7 @@ from app.services.pack_signing import canonical_manifest_bytes, ensure_signing_m
 
 
 def export_pack(db: Session, *, user_id) -> bytes:
+    app_settings = get_settings()
     run = latest_run(db, user_id=user_id)
     if run is None:
         raise ValueError("No evidence collected yet")
@@ -63,12 +65,25 @@ def export_pack(db: Session, *, user_id) -> bytes:
         "evidence-pack.zip": hashlib.sha256(evidence_zip_bytes).hexdigest(),
     }
     pack_manifest = {
+        "schema_version": "pack/v1",
         "export_id": export_id,
         "created_at_utc": generated_at.isoformat() + "Z",
         "run_id": str(run.id),
         "app_version": app_version,
         "mode": signing.mode,
         "public_key_b64": signing.public_key_b64,
+        "is_production": app_settings.is_production,
+        "runtime_sku": app_settings.runtime_sku,
+        "attestation": {
+            "generator": "dk-procurement-security-pack-generator",
+            "generator_version": app_version,
+            "signed_at_utc": generated_at.isoformat() + "Z",
+            "algorithms": ["sha256", signing.mode],
+            "support_sla": {
+                "name": app_settings.support_sla_name,
+                "response_hours": app_settings.support_sla_response_hours,
+            },
+        },
         "hashes": {k: pack_hashes[k] for k in sorted(pack_hashes)},
     }
     pack_manifest_bytes = canonical_manifest_bytes(pack_manifest)

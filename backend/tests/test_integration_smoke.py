@@ -1,4 +1,6 @@
 import base64
+import io
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -97,6 +99,177 @@ def test_settings_rejects_wildcard_allowed_origins(monkeypatch):
 
     with pytest.raises(ValueError):
         parse_allowed_origins(settings)
+
+
+def test_rate_limit_enforced_on_api_routes(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+    monkeypatch.setenv("RATE_LIMIT_MAX_REQUESTS", "1")
+    monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+
+    first = client.post("/api/auth/register", json={"email": "rate@example.com", "password": "password123"})
+    second = client.post("/api/auth/register", json={"email": "rate2@example.com", "password": "password123"})
+
+    assert first.status_code == 200
+    assert "x-request-id" in first.headers
+    assert second.status_code == 429
+    assert "x-request-id" in second.headers
+
+
+def test_framework_gap_report_endpoint(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+    r = client.post("/api/auth/register", json={"email": "gap@example.com", "password": "password123"})
+    assert r.status_code == 200
+
+    report = client.get("/api/frameworks/gap-report")
+    assert report.status_code == 200
+    payload = report.json()
+    assert payload["summary"]["total_controls"] == 12
+    assert isinstance(payload["frameworks"], list)
+    assert isinstance(payload["priority_gaps"], list)
+
+
+def test_import_grc_dry_run_and_commit(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+
+    from app.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    from app.db.base import Base
+    from app.main import create_app
+    from app.db.session import get_db
+    from app.repos.evidence import latest_evidence_all_controls
+
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    app = create_app()
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+
+    r = client.post("/api/auth/register", json={"email": "import@example.com", "password": "password123"})
+    assert r.status_code == 200
+    csrf = client.cookies.get("dkpack_csrf")
+    assert csrf
+
+    csv_payload = (
+        "control,status,notes,external_id\n"
+        "Security Defaults,Implemented,Imported from GRC,CTRL-1\n"
+        "Unknown Legacy Control,Partial,Needs follow-up,CTRL-2\n"
+    )
+
+    dry_run = client.post(
+        "/api/import/grc",
+        headers={"X-CSRF-Token": csrf},
+        files={"file": ("grc.csv", io.BytesIO(csv_payload.encode("utf-8")), "text/csv")},
+        data={"dry_run": "true"},
+    )
+    assert dry_run.status_code == 200
+    dry_body = dry_run.json()
+    assert dry_body["dry_run"] is True
+    assert dry_body["rows_total"] == 2
+    assert dry_body["rows_mapped"] == 1
+    assert dry_body["rows_imported"] == 0
+    assert dry_body["warnings"]
+
+    commit = client.post(
+        "/api/import/grc",
+        headers={"X-CSRF-Token": csrf},
+        files={"file": ("grc.csv", io.BytesIO(csv_payload.encode("utf-8")), "text/csv")},
+        data={"dry_run": "false"},
+    )
+    assert commit.status_code == 200
+    body = commit.json()
+    assert body["dry_run"] is False
+    assert body["rows_imported"] == 1
+    assert body["import_run_id"]
+
+    user_id = uuid.UUID(r.json()["id"])
+    db = TestingSessionLocal()
+    try:
+        rows = latest_evidence_all_controls(db, user_id=user_id)
+    finally:
+        db.close()
+
+    assert any(row.control_key == "ms.security_defaults" for row in rows)
 
 
 def test_oauth_denial_redirect_is_user_readable(monkeypatch):
@@ -466,6 +639,8 @@ def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
         assert "pack_manifest.json" in names
         assert "pack_manifest.sig" in names
         manifest = json.loads(outer.read("pack_manifest.json").decode("utf-8"))
+        assert manifest["runtime_sku"] in {"demo", "production"}
+        assert manifest["attestation"]["support_sla"]["name"]
         export_id = manifest["export_id"]
 
     v = client.get(f"/api/exports/{export_id}/verify")
