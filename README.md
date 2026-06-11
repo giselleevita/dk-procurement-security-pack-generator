@@ -1,15 +1,29 @@
-# DK Procurement Security Pack Generator (Self-hosted MVP)
+# DK Procurement Security Pack Generator
 
-Generate Danish procurement-ready security documentation locally (no SaaS) from Microsoft 365 (Graph) + GitHub evidence.
+**Self-hosted evidence collection and security-pack generation for procurement reviews.**
 
-Disclaimer: demo-grade MVP. Do not use in production without independent security review.
+The application collects authorized Microsoft 365 and GitHub evidence, maps it to a
+12-control review snapshot, and exports a signed documentation pack containing Markdown,
+PDF, and machine-readable evidence artifacts.
 
-## 1-Command Local Run
+This is a reference implementation. Validate its controls, deployment configuration, and
+generated statements independently before using them in a real procurement process.
+
+## Engineering Highlights
+
+- Local FastAPI, React, and PostgreSQL stack
+- Encrypted OAuth-token storage and explicit provider/data deletion controls
+- Offline deterministic demo mode
+- Ed25519-signed export manifests with SHA-256 artifact hashes
+- Host, origin, cookie, and CSRF hardening controls
+- Backend tests and API container build enforced in CI
+
+## One-Command Local Run
 ```sh
 ./dev-up.sh
 ```
 
-## Demo mode (offline)
+## Demo Mode (Offline)
 For a demo that does not require GitHub/Microsoft OAuth, start with `APP_ENV=demo` and seed a deterministic demo user + evidence snapshot:
 
 ```sh
@@ -38,7 +52,7 @@ Open:
 First-time use: click **Register** in the UI and create a local account (email must be a valid format, e.g. `demo@example.com`).
 
 
-## Data Handling Statement (Procurement-Friendly)
+## Data Handling Statement
 - Self-hosted and local-only: runs in your environment via Docker Compose.
 - No SaaS, no telemetry, no external analytics.
 - OAuth tokens are stored **encrypted at rest** in Postgres using Fernet (`FERNET_KEY`).
