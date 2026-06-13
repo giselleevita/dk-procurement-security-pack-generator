@@ -18,5 +18,5 @@ bcrypt==4.2.1
 
 reportlab==4.2.5
 
-pytest==8.3.3
+pytest==9.0.3
 pytest-asyncio==0.24.0
