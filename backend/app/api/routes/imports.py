@@ -8,6 +8,7 @@ from app.api.deps import AuthContext, get_auth_ctx, require_csrf
 from app.db.session import get_db
 from app.repos.audit_events import add_audit_event
 from app.services.grc_import import import_grc_csv
+from app.core.settings import get_settings
 
 router = APIRouter(prefix="/import", tags=["import"])
 
@@ -42,7 +43,13 @@ def import_grc(
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Expected a CSV file upload")
 
-    payload = file.file.read()
+    if file.content_type not in {"text/csv", "application/csv", "application/vnd.ms-excel"}:
+        raise HTTPException(status_code=415, detail="Unsupported upload media type")
+
+    maximum = get_settings().max_upload_bytes
+    payload = file.file.read(maximum + 1)
+    if len(payload) > maximum:
+        raise HTTPException(status_code=413, detail=f"CSV exceeds the {maximum}-byte limit")
     if not payload:
         raise HTTPException(status_code=400, detail="Uploaded CSV is empty")
 

@@ -26,6 +26,20 @@ export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
     }
   }
 
+  async function openDemo() {
+    setErr(null);
+    setBusy(true);
+    try {
+      const me = await api.post<Me>("/api/auth/demo", {});
+      onAuthed(me);
+      nav("/");
+    } catch (e2) {
+      setErr(e2 instanceof ApiError ? JSON.stringify(e2.detail) : "Demo is unavailable");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="auth">
       <h1>DK Security Pack</h1>
@@ -50,6 +64,10 @@ export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
         <button disabled={busy} type="submit">
           {busy ? "Signing in..." : "Sign in"}
         </button>
+        <button disabled={busy} type="button" className="secondary" onClick={openDemo}>
+          Try synthetic demo
+        </button>
+        <p className="muted">The free demo may take about a minute to wake and resets its synthetic data for every session.</p>
         <p className="muted">
           No account? <Link to="/register">Create one</Link>
         </p>
@@ -57,4 +75,3 @@ export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
     </div>
   );
 }
-

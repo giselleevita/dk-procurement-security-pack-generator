@@ -182,3 +182,11 @@ def test_export_pack_contains_expected_files_and_no_secret_markers(monkeypatch):
         inner_texts = [t for _name, t in _read_text_files_from_zip(inner)]
 
     _assert_no_secrets_in_texts(outer_texts + inner_texts)
+
+    from app.services.pack_verification import verify_pack_bytes
+
+    assert verify_pack_bytes(outer_bytes).valid
+
+    tampered = bytearray(outer_bytes)
+    tampered[-40] ^= 1
+    assert not verify_pack_bytes(bytes(tampered)).valid

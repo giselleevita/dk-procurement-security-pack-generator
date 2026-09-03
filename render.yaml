@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: dk-security-pack-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.demo
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: demo
+      - key: RUNTIME_SKU
+        value: demo
+      - key: RUN_MIGRATIONS
+        value: "true"
+      - key: DATABASE_URL
+        value: sqlite+pysqlite:////tmp/dkpack-demo.db
+      - key: FERNET_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: ALLOWED_HOSTS
+        value: "*.onrender.com"

@@ -18,7 +18,6 @@ from app.services.export_store import delete_exports_for_user
 
 
 DEFAULT_DEMO_EMAIL = "demo@example.com"
-DEFAULT_DEMO_PASSWORD = "password123"
 
 
 def _ensure_demo_user(db: Session, *, email: str, password: str) -> User:
@@ -51,7 +50,7 @@ def _wipe_user_but_keep_account(db: Session, *, user_id) -> None:
 def main() -> int:
     p = argparse.ArgumentParser(description="Seed a deterministic demo user + evidence snapshot (local only).")
     p.add_argument("--email", default=DEFAULT_DEMO_EMAIL)
-    p.add_argument("--password", default=DEFAULT_DEMO_PASSWORD)
+    p.add_argument("--password", required=True, help="Explicit local-only demo password")
     args = p.parse_args()
 
     engine = get_engine()

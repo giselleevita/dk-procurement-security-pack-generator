@@ -6,6 +6,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from app.api.router import router as api_router
 from app.api.middleware.security import SecurityMiddleware
@@ -18,7 +20,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="DK Procurement Security Pack Generator",
-        version="0.1.0",
+        version="1.0.0",
         docs_url="/api/docs" if settings.app_env == "dev" else None,
         redoc_url="/api/redoc" if settings.app_env == "dev" else None,
         openapi_url="/api/openapi.json" if settings.app_env == "dev" else None,
@@ -46,6 +48,12 @@ def create_app() -> FastAPI:
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("Referrer-Policy", "no-referrer")
         resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        resp.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; connect-src 'self'; img-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'",
+        )
         return resp
 
     @app.on_event("startup")
@@ -78,6 +86,9 @@ def create_app() -> FastAPI:
             )
 
     app.include_router(api_router, prefix="/api")
+    static_dir = Path(__file__).resolve().parent / "static"
+    if static_dir.exists():
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="demo-ui")
     return app
 
 

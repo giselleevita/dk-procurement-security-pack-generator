@@ -28,7 +28,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
         raise ValueError("No evidence collected yet")
 
     generated_at = utcnow()
-    app_version = "0.1.0"
+    app_version = "1.0.0"
     export_id = uuid.uuid4().hex
 
     signing = ensure_signing_material()
@@ -66,11 +66,13 @@ def export_pack(db: Session, *, user_id) -> bytes:
     }
     pack_manifest = {
         "schema_version": "pack/v1",
+        "pack_version": "1.0.0",
         "export_id": export_id,
         "created_at_utc": generated_at.isoformat() + "Z",
         "run_id": str(run.id),
         "app_version": app_version,
         "mode": signing.mode,
+        "signer_id": hashlib.sha256((signing.public_key_b64 or "hmac-local").encode()).hexdigest()[:24],
         "public_key_b64": signing.public_key_b64,
         "is_production": app_settings.is_production,
         "runtime_sku": app_settings.runtime_sku,

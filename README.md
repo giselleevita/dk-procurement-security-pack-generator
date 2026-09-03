@@ -1,5 +1,9 @@
 # DK Procurement Security Pack Generator
 
+**Status: public synthetic-data demo candidate · v1.0 security-pack format**
+
+Turns normalized evidence into a procurement report, evidence archive, and independently verifiable Ed25519-signed manifest. See the [engineering case study](docs/engineering-case-study.md) for architecture, trust boundaries, limitations, and a five-minute review path.
+
 **Self-hosted evidence collection and security-pack generation for procurement reviews.**
 
 The application collects authorized Microsoft 365 and GitHub evidence, maps it to a
@@ -30,12 +34,10 @@ For a demo that does not require GitHub/Microsoft OAuth, start with `APP_ENV=dem
 # Start containers
 ./dev-up.sh -d
 
-# Seed demo user + 12-control snapshot
-docker compose exec api python -m app.scripts.seed_demo
+# Seed a local demo user + 12-control snapshot with your own throwaway password
+docker compose exec api python -m app.scripts.seed_demo --password "replace-with-a-local-password"
 
-# Login in the UI
-# email: demo@example.com
-# password: password123
+# Login with demo@example.com and that local password
 ```
 
 

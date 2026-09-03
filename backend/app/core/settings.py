@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     rate_limit_max_requests: int = 120
     rate_limit_window_seconds: int = 60
+    max_upload_bytes: int = 1_000_000
 
     # Production mode: enforced when app_env == "production".
     # In production mode startup will reject demo/placeholder Fernet keys.

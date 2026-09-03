@@ -12,6 +12,7 @@ from app.api.routes.me import router as me_router
 from app.api.routes.oauth import router as oauth_router
 from app.api.routes.wipe import router as wipe_router
 from app.api.routes.frameworks import router as frameworks_router
+from app.api.routes.verify import router as verify_router
 
 router = APIRouter()
 
@@ -27,3 +28,4 @@ router.include_router(exports_router)
 router.include_router(imports_router)
 router.include_router(wipe_router)
 router.include_router(frameworks_router)
+router.include_router(verify_router)
