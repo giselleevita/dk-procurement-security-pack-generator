@@ -382,6 +382,25 @@ def test_oauth_denial_redirect_is_user_readable(monkeypatch):
     from urllib.parse import urlparse, parse_qs
 
     state = parse_qs(urlparse(authorize_url).query)["state"][0]
+    query = parse_qs(urlparse(authorize_url).query)
+    assert query["code_challenge_method"] == ["S256"]
+    assert len(query["code_challenge"][0]) == 43
+
+    from sqlalchemy import select
+    from app.crypto.fernet import decrypt_str
+    from app.models.oauth_state import OAuthState
+
+    db = TestingSessionLocal()
+    try:
+        stored = db.execute(select(OAuthState).where(OAuthState.state == state)).scalar_one()
+        verifier = decrypt_str(stored.encrypted_code_verifier)
+        import base64
+        import hashlib
+
+        expected = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).rstrip(b"=").decode("ascii")
+        assert query["code_challenge"] == [expected]
+    finally:
+        db.close()
 
     cb = client.get(
         f"/api/oauth/github/callback?state={state}&error=access_denied&error_description=Denied",

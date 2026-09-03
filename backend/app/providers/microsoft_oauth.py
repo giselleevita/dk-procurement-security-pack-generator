@@ -29,6 +29,7 @@ def exchange_code(
     code: str,
     redirect_uri: str,
     scope: str,
+    code_verifier: str,
 ) -> MicrosoftToken:
     resp = requests.post(
         token_endpoint(tenant),
@@ -39,6 +40,7 @@ def exchange_code(
             "code": code,
             "redirect_uri": redirect_uri,
             "scope": scope,
+            "code_verifier": code_verifier,
         },
         timeout=20,
     )
@@ -91,4 +93,3 @@ def refresh(
         scope=data.get("scope") or scope,
         expires_at=expires_at,
     )
-

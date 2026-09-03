@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import secrets
 from datetime import datetime, timedelta
 
@@ -13,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import AuthContext, get_auth_ctx, require_csrf
 from app.core.settings import get_settings
-from app.crypto.fernet import encrypt_str
+from app.crypto.fernet import decrypt_str, encrypt_str
 from app.db.session import get_db
 from app.providers.github_oauth import exchange_code as gh_exchange
 from app.providers.github_api import GitHubApi
@@ -28,6 +30,14 @@ router = APIRouter(prefix="/oauth", tags=["oauth"])
 
 class StartResponse(BaseModel):
     authorize_url: str
+
+
+def _new_pkce() -> tuple[str, str]:
+    """Return an RFC 7636 verifier and its URL-safe S256 challenge."""
+    verifier = secrets.token_urlsafe(64)
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return verifier, challenge
 
 
 def _clean_err(msg: str, *, limit: int = 220) -> str:
@@ -54,7 +64,15 @@ def github_start(
 
     delete_expired_states(db)
     state = secrets.token_urlsafe(24)
-    create_state(db, user_id=auth.user.id, provider="github", state=state, expires_at=utcnow() + timedelta(minutes=10))
+    verifier, challenge = _new_pkce()
+    create_state(
+        db,
+        user_id=auth.user.id,
+        provider="github",
+        state=state,
+        encrypted_code_verifier=encrypt_str(verifier),
+        expires_at=utcnow() + timedelta(minutes=10),
+    )
 
     scope = "repo read:org read:user"
     q = urlencode(
@@ -64,6 +82,8 @@ def github_start(
             "scope": scope,
             "state": state,
             "allow_signup": "false",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
         }
     )
     return StartResponse(authorize_url=f"https://github.com/login/oauth/authorize?{q}")
@@ -99,6 +119,7 @@ def github_callback(
             client_secret=settings.github_client_secret,
             code=code,
             redirect_uri=settings.github_oauth_redirect_uri,
+            code_verifier=decrypt_str(st.encrypted_code_verifier),
         )
     except Exception:
         return _redirect(settings, provider="github", status_value="error", error="GitHub token exchange failed")
@@ -138,7 +159,15 @@ def microsoft_start(
 
     delete_expired_states(db)
     state = secrets.token_urlsafe(24)
-    create_state(db, user_id=auth.user.id, provider="microsoft", state=state, expires_at=utcnow() + timedelta(minutes=10))
+    verifier, challenge = _new_pkce()
+    create_state(
+        db,
+        user_id=auth.user.id,
+        provider="microsoft",
+        state=state,
+        encrypted_code_verifier=encrypt_str(verifier),
+        expires_at=utcnow() + timedelta(minutes=10),
+    )
 
     q = urlencode(
         {
@@ -149,6 +178,8 @@ def microsoft_start(
             "scope": _ms_scopes(),
             "state": state,
             "prompt": "select_account",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
         }
     )
     return StartResponse(authorize_url=f"https://login.microsoftonline.com/{settings.ms_tenant}/oauth2/v2.0/authorize?{q}")
@@ -186,6 +217,7 @@ def microsoft_callback(
             code=code,
             redirect_uri=settings.ms_oauth_redirect_uri,
             scope=_ms_scopes(),
+            code_verifier=decrypt_str(st.encrypted_code_verifier),
         )
     except Exception:
         return _redirect(settings, provider="microsoft", status_value="error", error="Microsoft token exchange failed")

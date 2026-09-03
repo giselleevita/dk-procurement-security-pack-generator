@@ -24,9 +24,16 @@ def create_state(
     user_id: uuid.UUID,
     provider: str,
     state: str,
+    encrypted_code_verifier: str,
     expires_at: datetime,
 ) -> OAuthState:
-    row = OAuthState(user_id=user_id, provider=provider, state=state, expires_at=expires_at)
+    row = OAuthState(
+        user_id=user_id,
+        provider=provider,
+        state=state,
+        encrypted_code_verifier=encrypted_code_verifier,
+        expires_at=expires_at,
+    )
     db.add(row)
     db.commit()
     db.refresh(row)

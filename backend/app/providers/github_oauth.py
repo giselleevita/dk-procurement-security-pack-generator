@@ -20,6 +20,7 @@ def exchange_code(
     client_secret: str,
     code: str,
     redirect_uri: str,
+    code_verifier: str,
 ) -> GitHubToken:
     resp = requests.post(
         "https://github.com/login/oauth/access_token",
@@ -29,6 +30,7 @@ def exchange_code(
             "client_secret": client_secret,
             "code": code,
             "redirect_uri": redirect_uri,
+            "code_verifier": code_verifier,
         },
         timeout=15,
     )
@@ -41,4 +43,3 @@ def exchange_code(
         token_type=data.get("token_type") or "Bearer",
         scope=data.get("scope") or "",
     )
-

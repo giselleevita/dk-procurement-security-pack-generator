@@ -19,6 +19,7 @@ class OAuthState(Base):
 
     provider: Mapped[str] = mapped_column(String(32), index=True, nullable=False)  # github|microsoft
     state: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    encrypted_code_verifier: Mapped[str] = mapped_column(String(512), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

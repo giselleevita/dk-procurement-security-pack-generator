@@ -4,6 +4,10 @@
 
 This project turns synthetic or self-hosted security evidence into a portable, signed procurement pack. The public demo is disposable: it stores no customer data, exposes no OAuth integrations, and resets the synthetic workspace whenever a demo session begins.
 
+Both production OAuth integrations use single-use, ten-minute state records plus RFC 7636
+S256 PKCE. The verifier is encrypted at rest, consumed before token exchange, and never
+returned to the browser.
+
 ## Architecture
 
 ```mermaid
