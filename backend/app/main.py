@@ -20,7 +20,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="DK Procurement Security Pack Generator",
-        version="1.1.0",
+        version="1.1.1",
         docs_url="/api/docs" if settings.app_env == "dev" else None,
         redoc_url="/api/redoc" if settings.app_env == "dev" else None,
         openapi_url="/api/openapi.json" if settings.app_env == "dev" else None,

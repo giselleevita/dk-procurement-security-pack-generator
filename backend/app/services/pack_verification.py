@@ -9,6 +9,9 @@ from zipfile import BadZipFile, ZipFile
 
 MAX_PACK_BYTES = 20_000_000
 EXPECTED_FILES = {"report.md", "report.pdf", "evidence-pack.zip", "pack_manifest.json", "pack_manifest.sig"}
+HASHED_FILES = {"report.md", "report.pdf", "evidence-pack.zip"}
+MAX_ARCHIVE_FILES = 16
+MAX_UNCOMPRESSED_BYTES = 40_000_000
 
 
 @dataclass(frozen=True)
@@ -37,16 +40,33 @@ def verify_pack_bytes(payload: bytes) -> VerificationResult:
     errors: list[str] = []
     try:
         with ZipFile(BytesIO(payload)) as archive:
-            names = set(archive.namelist())
+            entries = archive.infolist()
+            raw_names = [entry.filename for entry in entries]
+            names = set(raw_names)
+            if len(entries) > MAX_ARCHIVE_FILES:
+                return VerificationResult(False, False, False, errors=["pack contains too many files"])
+            if len(names) != len(raw_names):
+                return VerificationResult(False, False, False, errors=["pack contains duplicate filenames"])
+            if any(name.startswith(("/", "\\")) or ".." in name.replace("\\", "/").split("/") for name in names):
+                return VerificationResult(False, False, False, errors=["pack contains an unsafe filename"])
+            if sum(entry.file_size for entry in entries) > MAX_UNCOMPRESSED_BYTES:
+                return VerificationResult(False, False, False, errors=["pack exceeds uncompressed size limit"])
+            unexpected = names - EXPECTED_FILES
+            if unexpected:
+                return VerificationResult(False, False, False, errors=["pack contains unexpected files"])
             if not EXPECTED_FILES.issubset(names):
                 return VerificationResult(False, False, False, errors=["pack is missing required files"])
             manifest_bytes = archive.read("pack_manifest.json")
             manifest = json.loads(manifest_bytes)
             if manifest.get("schema_version") != "pack/v1":
                 errors.append("unsupported manifest schema")
+            hashes = manifest.get("hashes")
+            if not isinstance(hashes, dict) or set(hashes) != HASHED_FILES:
+                errors.append("manifest hash inventory must exactly match pack payloads")
+                hashes = hashes if isinstance(hashes, dict) else {}
             hashes_valid = True
-            for name, expected in manifest.get("hashes", {}).items():
-                if name not in EXPECTED_FILES or name.startswith("pack_manifest"):
+            for name, expected in hashes.items():
+                if name not in HASHED_FILES or not isinstance(expected, str) or len(expected) != 64:
                     errors.append(f"invalid manifest entry: {name}")
                     hashes_valid = False
                     continue
@@ -67,6 +87,7 @@ def verify_pack_bytes(payload: bytes) -> VerificationResult:
                     signature_valid = True
                 except Exception:
                     errors.append("signature verification failed")
+            hashes_valid = hashes_valid and set(hashes) == HASHED_FILES
             valid = hashes_valid and signature_valid and not errors
             return VerificationResult(
                 valid, signature_valid, hashes_valid,

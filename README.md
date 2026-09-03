@@ -19,6 +19,7 @@ generated statements independently before using them in a real procurement proce
 - Encrypted OAuth-token storage and explicit provider/data deletion controls
 - Offline deterministic demo mode
 - Ed25519-signed export manifests with SHA-256 artifact hashes
+- Strict offline verification rejects incomplete manifests, unexpected files, unsafe paths, duplicates, and archive bombs
 - Host, origin, cookie, and CSRF hardening controls
 - Backend tests and API container build enforced in CI
 

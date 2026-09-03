@@ -716,6 +716,22 @@ def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
     assert v.status_code == 200
     assert v.json()["verified"] is True
 
+    # A second authenticated tenant cannot address the first tenant's stored export,
+    # even when the opaque export identifier is known.
+    other = TestClient(app)
+    other_registration = other.post(
+        "/api/auth/register",
+        json={"email": "other-tenant@example.com", "password": "password123"},
+    )
+    assert other_registration.status_code == 200
+    cross_tenant = other.get(f"/api/exports/{export_id}/verify")
+    assert cross_tenant.status_code == 200
+    assert cross_tenant.json() == {
+        "verified": False,
+        "mode": "unknown",
+        "details": {"error": "not_found"},
+    }
+
     # Tamper with report.md on disk without updating hashes/signature.
     import uuid
 

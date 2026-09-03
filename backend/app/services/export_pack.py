@@ -28,7 +28,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
         raise ValueError("No evidence collected yet")
 
     generated_at = utcnow()
-    app_version = "1.1.0"
+    app_version = "1.1.1"
     export_id = uuid.uuid4().hex
 
     signing = ensure_signing_material()

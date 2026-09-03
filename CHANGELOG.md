@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 - 2026-09-03
+
+- Require the signed manifest to enumerate exactly every security-pack payload.
+- Reject duplicate, unexpected, unsafe, oversized, and decompression-heavy ZIP structures before verification.
+- Add adversarial verifier-boundary regression tests.
+
 ## 1.1.0 — 2026-09-03
 
 - Added RFC 7636 S256 PKCE to GitHub and Microsoft OAuth authorization flows.
