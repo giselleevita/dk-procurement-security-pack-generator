@@ -15,7 +15,7 @@ services:
       - key: DATABASE_URL
         value: sqlite+pysqlite:////tmp/dkpack-demo.db
       - key: FERNET_KEY
-        generateValue: true
+        sync: false
       - key: COOKIE_SECURE
         value: "true"
       - key: ALLOWED_HOSTS

@@ -91,6 +91,10 @@ Edit `.env` and set:
 - Optional: `ALLOWED_HOSTS` (comma-separated) for Host header validation (TrustedHostMiddleware)
 - Production hardening: set `COOKIE_SECURE=true` when running behind HTTPS/TLS
 
+For the Render blueprint, supply `FERNET_KEY` as a secret generated with
+`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+The blueprint deliberately does not commit or invent this credential.
+
 ### OAuth Redirect URIs
 GitHub OAuth App:
 - `http://localhost:8000/api/oauth/github/callback`
