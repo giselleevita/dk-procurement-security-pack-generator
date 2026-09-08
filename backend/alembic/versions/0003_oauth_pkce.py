@@ -24,8 +24,10 @@ def upgrade() -> None:
     )
     # OAuth states are intentionally short-lived; old non-PKCE states are invalidated.
     op.execute("DELETE FROM oauth_states")
-    op.alter_column("oauth_states", "encrypted_code_verifier", nullable=False)
+    with op.batch_alter_table("oauth_states") as batch:
+        batch.alter_column("encrypted_code_verifier", nullable=False)
 
 
 def downgrade() -> None:
-    op.drop_column("oauth_states", "encrypted_code_verifier")
+    with op.batch_alter_table("oauth_states") as batch:
+        batch.drop_column("encrypted_code_verifier")

@@ -18,6 +18,9 @@ branch_labels = None
 depends_on = None
 
 
+JSON_TYPE = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
+
+
 def upgrade() -> None:
     op.create_table(
         "users",
@@ -91,7 +94,7 @@ def upgrade() -> None:
         sa.Column("control_key", sa.String(length=128), nullable=False),
         sa.Column("provider", sa.String(length=32), nullable=True),
         sa.Column("status", sa.String(length=16), nullable=False),
-        sa.Column("artifacts", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column("artifacts", JSON_TYPE, nullable=False, server_default=sa.text("'{}'")),
         sa.Column("notes", sa.Text(), nullable=False, server_default=""),
         sa.Column("collected_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -124,4 +127,3 @@ def downgrade() -> None:
 
     op.drop_index("ix_users_email", table_name="users")
     op.drop_table("users")
-

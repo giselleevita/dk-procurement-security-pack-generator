@@ -4,6 +4,18 @@ export type Me = {
   created_at: string;
 };
 
+export type GoldenPathResult = {
+  scenario: string;
+  steps: string[];
+  export_id: string;
+  signer_id: string | null;
+  schema_version: string | null;
+  original_valid: boolean;
+  tampered_valid: boolean;
+  tamper_errors: string[];
+  artifact_hashes: Record<string, string>;
+};
+
 export type Connection = {
   provider: "github" | "microsoft";
   connected: boolean;
@@ -32,4 +44,3 @@ export type CollectResponse = {
   status: "success" | "partial" | "failed";
   errors: string[];
 };
-

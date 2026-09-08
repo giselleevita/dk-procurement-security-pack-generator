@@ -125,7 +125,7 @@ def demo_login(response: Response, db: Session = Depends(get_db)) -> MeResponse:
     from app.scripts.seed_demo import _ensure_demo_user, _wipe_user_but_keep_account
     from app.services.collect import write_demo_snapshot
 
-    user = _ensure_demo_user(db, email="demo@example.invalid", password=new_session_token())
+    user = _ensure_demo_user(db, email="demo@example.com", password=new_session_token())
     _wipe_user_but_keep_account(db, user_id=user.id)
     write_demo_snapshot(db, user_id=user.id)
     session_token = new_session_token()

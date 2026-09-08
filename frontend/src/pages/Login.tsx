@@ -67,7 +67,7 @@ export function LoginPage({ onAuthed }: { onAuthed: (me: Me) => void }) {
         <button disabled={busy} type="button" className="secondary" onClick={openDemo}>
           Try synthetic demo
         </button>
-        <p className="muted">The free demo may take about a minute to wake and resets its synthetic data for every session.</p>
+        <p className="muted"><strong>Free demo notice:</strong> the service may take about a minute to wake. Every session resets to synthetic data; never upload real customer evidence.</p>
         <p className="muted">
           No account? <Link to="/register">Create one</Link>
         </p>

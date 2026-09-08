@@ -46,6 +46,13 @@ h1 {
   line-height: 1.2;
 }
 
+h2 { margin: 0 0 8px; }
+.eyebrow { color: var(--accent); font-size: 11px; font-weight: 850; letter-spacing: .12em; }
+.proofGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+.proofGrid > div { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--panelBorder); border-radius: 12px; background: rgba(255,255,255,.7); }
+.proofGrid span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .proofGrid { grid-template-columns: 1fr; } }
+
 button {
   font-family: inherit;
   border-radius: 10px;
@@ -318,4 +325,3 @@ input {
     text-align: left;
   }
 }
-

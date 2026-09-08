@@ -126,6 +126,8 @@ docker compose exec web npm run lint
 ## Demo
 See `DEMO_SCRIPT.md`.
 
+For the recruiter-facing integrity walkthrough, use [the three-minute demo](docs/RECRUITER_DEMO.md).
+
 ## Notes
 - Evidence is computed from current provider permissions. If Graph endpoints are not accessible, the control becomes `unknown` (not a crash).
 - GitHub evidence samples up to 10 repositories per run (most recently updated).

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { CollectResponse, ControlSummary } from "../api/types";
+import type { CollectResponse, ControlSummary, GoldenPathResult } from "../api/types";
 import { ExportButton } from "../components/ExportButton";
 
 function statusClass(s: string) {
@@ -16,6 +16,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [journey, setJourney] = useState<GoldenPathResult | null>(null);
 
   async function load() {
     setErr(null);
@@ -53,6 +54,19 @@ export function DashboardPage() {
     }
   }
 
+  async function runGoldenPath() {
+    setBusy(true);
+    setErr(null);
+    try {
+      setJourney(await api.post<GoldenPathResult>("/api/demo/golden-path"));
+      await load();
+    } catch (e) {
+      setErr(e instanceof ApiError ? JSON.stringify(e.detail) : "Golden demo failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="stack">
       <section className="hero card">
@@ -68,6 +82,7 @@ export function DashboardPage() {
           </button>
           <ExportButton format="zip" className="secondary" onError={setErr} />
           <Link to="/pack-preview">Preview pack</Link>
+          <button disabled={busy} className="secondary" onClick={runGoldenPath}>Run verified demo</button>
         </div>
         <div className="summary">
           <span className="pill pass">Pass {counts.pass}</span>
@@ -78,6 +93,19 @@ export function DashboardPage() {
       </section>
 
       {err ? <div className="error">{err}</div> : null}
+
+      {journey ? (
+        <section className="card demoProof" aria-live="polite">
+          <div className="rowHead"><div><span className="eyebrow">GOLDEN PATH COMPLETE</span><h2>Signed-pack integrity proof</h2></div><span className="pill pass">Verified</span></div>
+          <div className="proofGrid">
+            <div><strong>1. Synthetic evidence</strong><span>12 controls collected</span></div>
+            <div><strong>2. Signed export</strong><span>{journey.schema_version} · signer {journey.signer_id}</span></div>
+            <div><strong>3. Independent check</strong><span>{journey.original_valid ? "Original accepted" : "Original rejected"}</span></div>
+            <div><strong>4. Tamper test</strong><span>{journey.tampered_valid ? "Unexpectedly accepted" : "Modified report rejected"}</span></div>
+          </div>
+          <details><summary>Artifact fingerprints</summary><pre className="pre">{JSON.stringify(journey.artifact_hashes, null, 2)}</pre></details>
+        </section>
+      ) : null}
 
       <section className="card">
         <div className="tableHead">

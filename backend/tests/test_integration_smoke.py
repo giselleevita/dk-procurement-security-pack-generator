@@ -757,3 +757,43 @@ def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
     body = v2.json()
     assert body["verified"] is False
     assert body["details"]["hash_mismatches"], "Expected hash mismatch after tampering"
+
+
+def test_demo_golden_path_proves_valid_and_tampered_outcomes(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("FERNET_KEY", _fernet_key())
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
+    monkeypatch.setenv("EXPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("APP_ENV", "demo")
+
+    from app.core.settings import get_settings
+    get_settings.cache_clear()
+    from app.db.base import Base
+    from app.db.session import get_db
+    from app.main import create_app
+
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    sessions = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    app = create_app()
+
+    def override_get_db():
+        with sessions() as db:
+            yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+    assert client.post("/api/auth/demo", json={}).status_code == 200
+    csrf = client.cookies.get("dkpack_csrf")
+    result = client.post("/api/demo/golden-path", headers={"X-CSRF-Token": csrf})
+    assert result.status_code == 200
+    body = result.json()
+    assert body["steps"] == ["collect", "sign", "verify", "tamper-test"]
+    assert body["original_valid"] is True
+    assert body["tampered_valid"] is False
+    assert body["tamper_errors"] == ["hash mismatch: report.md"]
+    assert set(body["artifact_hashes"]) == {"report.md", "report.pdf", "evidence-pack.zip"}

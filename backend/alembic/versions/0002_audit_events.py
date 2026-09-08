@@ -18,6 +18,9 @@ branch_labels = None
 depends_on = None
 
 
+JSON_TYPE = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
+
+
 def upgrade() -> None:
     op.create_table(
         "audit_events",
@@ -26,9 +29,9 @@ def upgrade() -> None:
         sa.Column("action", sa.String(length=64), nullable=False),
         sa.Column(
             "metadata",
-            postgresql.JSONB(astext_type=sa.Text()),
+            JSON_TYPE,
             nullable=False,
-            server_default=sa.text("'{}'::jsonb"),
+            server_default=sa.text("'{}'"),
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )

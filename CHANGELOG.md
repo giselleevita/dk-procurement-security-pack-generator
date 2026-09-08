@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 - 2026-09-08
+
+- Add a one-click synthetic golden path that collects, signs, independently verifies, and safely demonstrates tamper rejection.
+- Add a recruiter-facing integrity proof panel with signer and artifact fingerprints.
+- Strengthen the free-demo cold-start and synthetic-data notice.
+- Make the migration chain portable across production PostgreSQL and disposable SQLite demos.
+
 ## 1.1.1 - 2026-09-03
 
 - Require the signed manifest to enumerate exactly every security-pack payload.
