@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 - 2026-09-11
+
+- Add a 90-second recruiter walkthrough and interview discussion prompts.
+
 ## 1.2.1 - 2026-09-11
 
 - Add mandatory frontend lint and production-build gates to CI.

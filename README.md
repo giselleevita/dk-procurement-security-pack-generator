@@ -1,6 +1,6 @@
 # DK Procurement Security Pack Generator
 
-**Status: public synthetic-data reference demo · v1.0 security-pack format · application v1.2.1**
+**Status: public synthetic-data reference demo · v1.0 security-pack format · application v1.2.2**
 
 Turns normalized evidence into a procurement report, evidence archive, and independently verifiable Ed25519-signed manifest. See the [engineering case study](docs/engineering-case-study.md) for architecture, trust boundaries, limitations, and a five-minute review path.
 
@@ -126,7 +126,7 @@ docker compose exec web npm run lint
 ## Demo
 See `DEMO_SCRIPT.md`.
 
-For the recruiter-facing integrity walkthrough, use [the three-minute demo](docs/RECRUITER_DEMO.md).
+For the recruiter-facing integrity walkthrough, use the [90-second demo](docs/90_SECOND_DEMO.md) or [three-minute reviewer path](docs/RECRUITER_DEMO.md).
 
 ## Notes
 - Evidence is computed from current provider permissions. If Graph endpoints are not accessible, the control becomes `unknown` (not a crash).
