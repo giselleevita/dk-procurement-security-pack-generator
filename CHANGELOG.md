@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 - 2026-09-11
+
+- Add mandatory frontend lint and production-build gates to CI.
+- Build both the API image and complete disposable demo image on every change.
+- Replace deprecated startup hooks with an application lifespan that validates configuration before creating signing material.
+
 ## 1.2.0 - 2026-09-08
 
 - Add a one-click synthetic golden path that collects, signs, independently verifies, and safely demonstrates tamper rejection.

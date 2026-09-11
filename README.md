@@ -1,6 +1,6 @@
 # DK Procurement Security Pack Generator
 
-**Status: public synthetic-data demo candidate · v1.0 security-pack format**
+**Status: public synthetic-data reference demo · v1.0 security-pack format · application v1.2.1**
 
 Turns normalized evidence into a procurement report, evidence archive, and independently verifiable Ed25519-signed manifest. See the [engineering case study](docs/engineering-case-study.md) for architecture, trust boundaries, limitations, and a five-minute review path.
 
@@ -21,7 +21,7 @@ generated statements independently before using them in a real procurement proce
 - Ed25519-signed export manifests with SHA-256 artifact hashes
 - Strict offline verification rejects incomplete manifests, unexpected files, unsafe paths, duplicates, and archive bombs
 - Host, origin, cookie, and CSRF hardening controls
-- Backend tests and API container build enforced in CI
+- Backend tests, frontend lint/build, API and complete-demo container builds enforced in CI
 
 ## One-Command Local Run
 ```sh
