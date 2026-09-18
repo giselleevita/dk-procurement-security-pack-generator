@@ -22,7 +22,8 @@ def _app_dir() -> Path:
 
 
 def _state_dir() -> Path:
-    return _app_dir() / "state"
+    configured = os.getenv("PACK_SIGNING_STATE_DIR")
+    return Path(configured) if configured else _app_dir() / "state"
 
 
 def _state_path() -> Path:

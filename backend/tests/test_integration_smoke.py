@@ -659,6 +659,7 @@ def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
     monkeypatch.setenv("FERNET_KEY", _fernet_key())
     monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
     monkeypatch.setenv("EXPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("PACK_SIGNING_STATE_DIR", str(tmp_path / "signing"))
 
     from app.core.settings import get_settings
 
@@ -764,6 +765,7 @@ def test_demo_golden_path_proves_valid_and_tampered_outcomes(tmp_path, monkeypat
     monkeypatch.setenv("FERNET_KEY", _fernet_key())
     monkeypatch.setenv("WEB_BASE_URL", "http://localhost:5173")
     monkeypatch.setenv("EXPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("PACK_SIGNING_STATE_DIR", str(tmp_path / "signing"))
     monkeypatch.setenv("APP_ENV", "demo")
 
     from app.core.settings import get_settings
