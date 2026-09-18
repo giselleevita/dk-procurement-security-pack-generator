@@ -72,9 +72,13 @@ First-time use: click **Register** in the UI and create a local account (email m
 
 ## Evidence integrity (signed packs)
 - Each downloaded `dk-security-pack.zip` includes `pack_manifest.json` (SHA-256 hashes for `report.md`, `report.pdf`, `evidence-pack.zip`) and `pack_manifest.sig` (signature).
-- Signing mode: Ed25519 (preferred) using a local instance key stored under `backend/app/state/` (gitignored).
+- Signing mode: Ed25519 using a local instance key stored under `backend/app/state/` (gitignored).
+- Set `PACK_SIGNING_STATE_DIR` to place that state on a dedicated durable volume.
+- Existing signing state fails closed if it is corrupt or cannot be decrypted; the service never silently replaces a trust anchor.
+- Rotate intentionally with `cd backend && python -m app.scripts.rotate_signing_key --confirm`. The command records the retired public key and prints the new signer ID; private material is never copied into the history record.
+- `/api/health` reports only signing readiness, algorithm, and signer ID—not public or private key material.
 - This is tamper-evident: changes to the pack payload files are detected by hash mismatch and/or signature failure.
-- Limitation: the trust anchor is the local instance key; if the instance is reinstalled or the key is rotated, old packs may not verify against the new instance key.
+- Limitation: the trust anchor is a local instance key rather than an HSM/KMS-backed identity. Historical packs remain independently verifiable because they embed their Ed25519 public key, but production operators still need controlled key custody and an external trust registry.
 
 ## Export Naming and Structure
 - Download name: `dk-security-pack.zip`
