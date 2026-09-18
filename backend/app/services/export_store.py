@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import re
+import uuid
 from pathlib import Path
 
 from app.core.settings import get_settings
 
 
 _EXPORT_ID_RE = re.compile(r"^[a-f0-9]{32}$")
-_USER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 
 
 def _backend_root() -> Path:
@@ -26,10 +26,12 @@ def _exports_root() -> Path:
 def export_pack_path(*, user_id: str, export_id: str) -> Path:
     if not _EXPORT_ID_RE.match(export_id):
         raise ValueError("Invalid export_id")
-    if not _USER_ID_RE.fullmatch(user_id) or set(user_id) == {"."}:
-        raise ValueError("Invalid user_id")
+    try:
+        safe_user_id = str(uuid.UUID(user_id))
+    except (ValueError, AttributeError) as exc:
+        raise ValueError("Invalid user_id") from exc
     # Per-user namespace avoids collisions and enables wipe-by-user.
-    return _exports_root() / "users" / user_id / f"{export_id}.zip"
+    return _exports_root() / "users" / safe_user_id / f"{export_id}.zip"
 
 
 def store_export_pack(*, user_id: str, export_id: str, pack_bytes: bytes) -> Path:
