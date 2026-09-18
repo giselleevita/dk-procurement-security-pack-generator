@@ -72,7 +72,7 @@ def export_pack(db: Session, *, user_id) -> bytes:
         "run_id": str(run.id),
         "app_version": app_version,
         "mode": signing.mode,
-        "signer_id": hashlib.sha256((signing.public_key_b64 or "hmac-local").encode()).hexdigest()[:24],
+        "signer_id": signing.signer_id,
         "public_key_b64": signing.public_key_b64,
         "is_production": app_settings.is_production,
         "runtime_sku": app_settings.runtime_sku,
