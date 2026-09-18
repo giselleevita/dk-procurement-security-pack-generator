@@ -7,6 +7,7 @@ from app.core.settings import get_settings
 
 
 _EXPORT_ID_RE = re.compile(r"^[a-f0-9]{32}$")
+_USER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 
 
 def _backend_root() -> Path:
@@ -25,6 +26,8 @@ def _exports_root() -> Path:
 def export_pack_path(*, user_id: str, export_id: str) -> Path:
     if not _EXPORT_ID_RE.match(export_id):
         raise ValueError("Invalid export_id")
+    if not _USER_ID_RE.fullmatch(user_id) or set(user_id) == {"."}:
+        raise ValueError("Invalid user_id")
     # Per-user namespace avoids collisions and enables wipe-by-user.
     return _exports_root() / "users" / user_id / f"{export_id}.zip"
 
@@ -47,7 +50,7 @@ def load_export_pack(*, user_id: str, export_id: str) -> bytes | None:
 
 def delete_exports_for_user(*, user_id: str) -> None:
     # Best-effort recursive delete.
-    root = _exports_root() / "users" / user_id
+    root = export_pack_path(user_id=user_id, export_id="0" * 32).parent
     if not root.exists():
         return
     for p in sorted(root.rglob("*"), reverse=True):
