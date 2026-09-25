@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Store export packs under deterministic opaque user directory identifiers and
+  enforce canonical export-root containment. Existing cached exports from older
+  builds must be regenerated; signed packs already downloaded remain verifiable.
+
 ## 1.2.2 - 2026-09-11
 
 - Add a 90-second recruiter walkthrough and interview discussion prompts.

@@ -734,10 +734,9 @@ def test_export_pack_verify_endpoint_detects_tampering(tmp_path, monkeypatch):
     }
 
     # Tamper with report.md on disk without updating hashes/signature.
-    import uuid
+    from app.services.export_store import export_pack_path
 
-    user_id = uuid.UUID(r.json()["id"])
-    pack_path = tmp_path / "users" / str(user_id) / f"{export_id}.zip"
+    pack_path = export_pack_path(user_id=r.json()["id"], export_id=export_id)
     assert pack_path.exists()
 
     with ZipFile(BytesIO(pack_path.read_bytes()), "r") as z:
